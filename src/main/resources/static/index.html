@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mon premier site</title>
+</head>
+<body>
+    <h1>Bienvenue sur mon site !</h1>
+    <button onclick="loadMessage()">Clique ici</button>
+    <p id="msg"></p>
+
+    <script>
+        function loadMessage() {
+            fetch('/hello')
+                .then(res => res.text())
+                .then(data => document.getElementById("msg").innerText = data);
+        }
+    </script>
+</body>
+</html>
