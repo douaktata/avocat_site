@@ -17,6 +17,10 @@ public class User {
     private String nom;
     private String prenom;
     private String email;
+
+    @Column(nullable = false)
+    private String password;
+
     private String adresse;
     private String CIN;
     private String tel;
@@ -42,6 +46,9 @@ public class User {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
     public String getAdresse() { return adresse; }
     public void setAdresse(String adresse) { this.adresse = adresse; }
