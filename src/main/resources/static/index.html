@@ -1,19 +1,638 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Mon premier site</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JurisHub - Connexion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 50%, #0d2137 100%);
+            overflow: hidden;
+        }
+
+        /* Animated background circles */
+        .bg-circles {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-circles .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.06);
+            animation: floatCircle 20s infinite ease-in-out;
+        }
+        .bg-circles .circle:nth-child(1) { width: 400px; height: 400px; top: -100px; left: -100px; animation-delay: 0s; }
+        .bg-circles .circle:nth-child(2) { width: 300px; height: 300px; bottom: -80px; right: -80px; animation-delay: -5s; animation-duration: 25s; }
+        .bg-circles .circle:nth-child(3) { width: 200px; height: 200px; top: 50%; left: 60%; animation-delay: -10s; animation-duration: 18s; }
+        .bg-circles .circle:nth-child(4) { width: 150px; height: 150px; top: 20%; right: 10%; animation-delay: -7s; background: rgba(96, 165, 250, 0.04); }
+
+        @keyframes floatCircle {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -40px) scale(1.05); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(15px, 30px) scale(1.02); }
+        }
+
+        /* Glass card */
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 460px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 48px 40px;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3), 0 0 80px rgba(59, 130, 246, 0.08);
+            animation: cardAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        @keyframes cardAppear {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Logo */
+        .logo {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .logo-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+            animation: pulseGlow 3s ease-in-out infinite;
+        }
+        .logo-icon svg { width: 28px; height: 28px; fill: white; }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3); }
+            50% { box-shadow: 0 8px 40px rgba(59, 130, 246, 0.5); }
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 26px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 13px;
+            font-weight: 400;
+            margin-bottom: 32px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 28px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.5);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tab:hover { color: rgba(255, 255, 255, 0.7); }
+        .tab.active {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 18px;
+            animation: fieldAppear 0.5s ease forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .form-group:nth-child(1) { animation-delay: 0.1s; }
+        .form-group:nth-child(2) { animation-delay: 0.2s; }
+        .form-group:nth-child(3) { animation-delay: 0.3s; }
+        .form-group:nth-child(4) { animation-delay: 0.4s; }
+        .form-group:nth-child(5) { animation-delay: 0.5s; }
+        .form-group:nth-child(6) { animation-delay: 0.6s; }
+
+        @keyframes fieldAppear {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #ffffff;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #ffffff;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+        }
+        select:focus {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.08);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        select option {
+            background: #1a2a4a;
+            color: #ffffff;
+        }
+        input::placeholder { color: rgba(255, 255, 255, 0.25); }
+        input:focus {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.08);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        /* Submit button */
+        button[type="submit"] {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        }
+        button[type="submit"]:active {
+            transform: translateY(0);
+        }
+        button[type="submit"]::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 0; height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        button[type="submit"]:active::after {
+            width: 300px; height: 300px;
+        }
+
+        /* Loading spinner on button */
+        button[type="submit"].loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        button[type="submit"].loading::before {
+            content: '';
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Messages */
+        .message {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            display: none;
+            animation: msgAppear 0.4s ease;
+        }
+        @keyframes msgAppear {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.12);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .message.success {
+            display: block;
+            background: rgba(34, 197, 94, 0.12);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        /* Dashboard */
+        .dashboard {
+            display: none;
+            text-align: center;
+            animation: cardAppear 0.6s ease forwards;
+        }
+        .dashboard .welcome {
+            font-size: 22px;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 16px 0 4px;
+        }
+        .dashboard .welcome span { color: #60a5fa; }
+        .dashboard .role-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            margin: 8px 4px;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        .dashboard .info-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 20px;
+            border-radius: 16px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .dashboard .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 13px;
+        }
+        .dashboard .info-row:last-child { border-bottom: none; }
+        .dashboard .info-row .label { color: rgba(255, 255, 255, 0.45); }
+        .dashboard .info-row .value { color: #ffffff; font-weight: 500; }
+        .dashboard .token-section {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            word-break: break-all;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+
+        .btn-logout {
+            padding: 10px 28px;
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .row { display: flex; gap: 12px; }
+        .row .form-group { flex: 1; }
+
+        /* Form transition */
+        .form-fade-enter {
+            animation: formFadeIn 0.4s ease forwards;
+        }
+        @keyframes formFadeIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
 </head>
 <body>
-    <h1>Bienvenue sur mon site !</h1>
-    <button onclick="loadMessage()">Clique ici</button>
-    <p id="msg"></p>
+    <!-- Animated background -->
+    <div class="bg-circles">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+
+    <div class="container">
+        <!-- Auth Section -->
+        <div id="authSection">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.67-3.13 9.06-7 10.2-3.87-1.14-7-5.53-7-10.2V6.3l7-3.12zM11 7v2h2V7h-2zm0 4v6h2v-6h-2z"/></svg>
+                </div>
+            </div>
+            <h1>JurisHub</h1>
+            <p class="subtitle">Cabinet d'Avocats - Plateforme de Gestion</p>
+
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('login')">Connexion</div>
+                <div class="tab" onclick="showTab('register')">Inscription</div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="form-fade-enter" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" required placeholder="votre@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="loginPassword" required placeholder="Votre mot de passe">
+                </div>
+                <button type="submit" id="loginBtn">Se connecter</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" onsubmit="handleRegister(event)" style="display:none">
+                <div class="row">
+                    <div class="form-group">
+                        <label>Nom</label>
+                        <input type="text" id="regNom" required placeholder="Nom">
+                    </div>
+                    <div class="form-group">
+                        <label>Pr&eacute;nom</label>
+                        <input type="text" id="regPrenom" required placeholder="Pr&eacute;nom">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="regEmail" required placeholder="votre@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="regPassword" required minlength="6" placeholder="Min. 6 caract&egrave;res">
+                </div>
+                <div class="row">
+                    <div class="form-group">
+                        <label>T&eacute;l&eacute;phone</label>
+                        <input type="text" id="regTel" placeholder="T&eacute;l&eacute;phone">
+                    </div>
+                    <div class="form-group">
+                        <label>CIN</label>
+                        <input type="text" id="regCIN" placeholder="CIN">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Adresse</label>
+                    <input type="text" id="regAdresse" placeholder="Adresse">
+                </div>
+                <div class="form-group">
+                    <label>R&ocirc;le</label>
+                    <select id="regRole" required>
+                        <option value="CLIENT">Client</option>
+                        <option value="AVOCAT">Avocat</option>
+                        <option value="SECRETAIRE">Secr&eacute;taire</option>
+                        <option value="STAGIAIRE">Stagiaire</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Date de naissance</label>
+                    <input type="date" id="regDateNaissance">
+                </div>
+                <button type="submit" id="registerBtn">S'inscrire</button>
+            </form>
+
+            <div id="message" class="message"></div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="dashboard">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.67-3.13 9.06-7 10.2-3.87-1.14-7-5.53-7-10.2V6.3l7-3.12zM11 7v2h2V7h-2zm0 4v6h2v-6h-2z"/></svg>
+                </div>
+            </div>
+            <p class="welcome">Bienvenue, <span id="userName"></span></p>
+            <div id="userRolesContainer"></div>
+
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="label">Email</span>
+                    <span class="value" id="userEmail"></span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Statut</span>
+                    <span class="value" style="color: #86efac;">Connect&eacute;</span>
+                </div>
+                <div class="token-section">
+                    <strong style="color:rgba(255,255,255,0.55)">JWT Token:</strong><br>
+                    <span id="userToken"></span>
+                </div>
+            </div>
+
+            <button class="btn-logout" onclick="logout()">Se d&eacute;connecter</button>
+        </div>
+    </div>
 
     <script>
-        function loadMessage() {
-            fetch('/hello')
-                .then(res => res.text())
-                .then(data => document.getElementById("msg").innerText = data);
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach((t, i) => {
+                t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+            });
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+
+            if (tab === 'login') {
+                registerForm.style.display = 'none';
+                loginForm.style.display = 'block';
+                loginForm.classList.remove('form-fade-enter');
+                void loginForm.offsetWidth;
+                loginForm.classList.add('form-fade-enter');
+            } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                registerForm.classList.remove('form-fade-enter');
+                void registerForm.offsetWidth;
+                registerForm.classList.add('form-fade-enter');
+            }
+            clearMessage();
         }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + type;
+        }
+
+        function clearMessage() {
+            const msg = document.getElementById('message');
+            msg.className = 'message';
+            msg.textContent = '';
+        }
+
+        function setLoading(btn, loading) {
+            if (loading) {
+                btn.classList.add('loading');
+                btn.dataset.originalText = btn.textContent;
+                btn.textContent = 'Chargement...';
+            } else {
+                btn.classList.remove('loading');
+                btn.textContent = btn.dataset.originalText || btn.textContent;
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            clearMessage();
+            const btn = document.getElementById('loginBtn');
+            setLoading(btn, true);
+            try {
+                const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('loginEmail').value,
+                        password: document.getElementById('loginPassword').value
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data));
+                    showDashboard(data);
+                } else {
+                    showMessage(data.message || 'Email ou mot de passe incorrect', 'error');
+                }
+            } catch (err) {
+                showMessage('Erreur de connexion au serveur', 'error');
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            clearMessage();
+            const btn = document.getElementById('registerBtn');
+            setLoading(btn, true);
+            try {
+                const res = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nom: document.getElementById('regNom').value,
+                        prenom: document.getElementById('regPrenom').value,
+                        email: document.getElementById('regEmail').value,
+                        password: document.getElementById('regPassword').value,
+                        tel: document.getElementById('regTel').value,
+                        CIN: document.getElementById('regCIN').value,
+                        adresse: document.getElementById('regAdresse').value,
+                        date_naissance: document.getElementById('regDateNaissance').value || null,
+                        role: document.getElementById('regRole').value
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMessage('Inscription r\u00e9ussie ! Vous pouvez vous connecter.', 'success');
+                    setTimeout(() => showTab('login'), 1500);
+                } else {
+                    showMessage(data.message || "Erreur lors de l'inscription", 'error');
+                }
+            } catch (err) {
+                showMessage('Erreur de connexion au serveur', 'error');
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        function showDashboard(data) {
+            document.getElementById('authSection').style.display = 'none';
+            const dash = document.getElementById('dashboard');
+            dash.style.display = 'block';
+            document.getElementById('userName').textContent = data.prenom + ' ' + data.nom;
+            document.getElementById('userEmail').textContent = data.email;
+            document.getElementById('userToken').textContent = data.token;
+
+            const rolesContainer = document.getElementById('userRolesContainer');
+            rolesContainer.innerHTML = '';
+            const roles = Array.isArray(data.roles) ? data.roles : [data.roles];
+            roles.forEach(role => {
+                const badge = document.createElement('span');
+                badge.className = 'role-badge';
+                badge.textContent = role;
+                rolesContainer.appendChild(badge);
+            });
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+        }
+
+        window.onload = function() {
+            const user = localStorage.getItem('user');
+            if (user) {
+                try { showDashboard(JSON.parse(user)); } catch(e) { logout(); }
+            }
+        };
     </script>
 </body>
 </html>

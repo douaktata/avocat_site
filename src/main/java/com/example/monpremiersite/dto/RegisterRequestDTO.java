@@ -1,5 +1,6 @@
 package com.example.monpremiersite.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDate;
 
 public class RegisterRequestDTO {
@@ -11,6 +12,7 @@ public class RegisterRequestDTO {
     private String adresse;
     private String CIN;
     private LocalDate date_naissance;
+    private String role;
 
     public RegisterRequestDTO() {}
 
@@ -32,9 +34,14 @@ public class RegisterRequestDTO {
     public String getAdresse() { return adresse; }
     public void setAdresse(String adresse) { this.adresse = adresse; }
 
+    @JsonProperty("CIN")
     public String getCIN() { return CIN; }
+    @JsonProperty("CIN")
     public void setCIN(String CIN) { this.CIN = CIN; }
 
     public LocalDate getDate_naissance() { return date_naissance; }
     public void setDate_naissance(LocalDate date_naissance) { this.date_naissance = date_naissance; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 }

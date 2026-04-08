@@ -14,7 +14,8 @@ public class AppointmentMapper {
             userInfo = new UserInfoDTO(
                 appointment.getUser().getIdu(),
                 appointment.getUser().getNom(),
-                appointment.getUser().getPrenom()
+                appointment.getUser().getPrenom(),
+                appointment.getUser().getPhoto_url()
             );
         }
 

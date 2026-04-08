@@ -11,10 +11,11 @@ public class DocumentDTO {
     private String case_number;
     private String uploaded_by_name;
     private LocalDateTime uploaded_at;
+    private Long task_id;
 
     public DocumentDTO() {}
 
-    public DocumentDTO(Long idd, String file_name, String file_type, Long case_id, String case_number, String uploaded_by_name, LocalDateTime uploaded_at) {
+    public DocumentDTO(Long idd, String file_name, String file_type, Long case_id, String case_number, String uploaded_by_name, LocalDateTime uploaded_at, Long task_id) {
         this.idd = idd;
         this.file_name = file_name;
         this.file_type = file_type;
@@ -22,6 +23,7 @@ public class DocumentDTO {
         this.case_number = case_number;
         this.uploaded_by_name = uploaded_by_name;
         this.uploaded_at = uploaded_at;
+        this.task_id = task_id;
     }
 
     // Getters and Setters
@@ -46,6 +48,9 @@ public class DocumentDTO {
     public LocalDateTime getUploaded_at() { return uploaded_at; }
     public void setUploaded_at(LocalDateTime uploaded_at) { this.uploaded_at = uploaded_at; }
 
+    public Long getTask_id() { return task_id; }
+    public void setTask_id(Long task_id) { this.task_id = task_id; }
+
     // Mapper
     public static DocumentDTO fromEntity(DocumentEntity entity) {
         Long caseId = null;
@@ -62,6 +67,8 @@ public class DocumentDTO {
             uploadedByName = ((nom != null ? nom : "") + " " + (prenom != null ? prenom : "")).trim();
         }
 
+        Long taskId = entity.getTask() != null ? entity.getTask().getId() : null;
+
         return new DocumentDTO(
             entity.getIdd(),
             entity.getFile_name(),
@@ -69,7 +76,8 @@ public class DocumentDTO {
             caseId,
             caseNumber,
             uploadedByName,
-            entity.getUploaded_at()
+            entity.getUploaded_at(),
+            taskId
         );
     }
 }

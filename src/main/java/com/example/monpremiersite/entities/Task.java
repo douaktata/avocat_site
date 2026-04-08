@@ -16,6 +16,9 @@ public class Task {
     private String description;
     private LocalDateTime deadline;
 
+    @Column(columnDefinition = "TEXT")
+    private String feedback;
+
     @Enumerated(EnumType.STRING)
     private TaskStatus status;
 

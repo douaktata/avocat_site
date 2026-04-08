@@ -14,12 +14,14 @@ public class TaskDTO {
     private TaskPriority priority;
     private Long assignedToId;
     private String assignedToName;
+    private String assignedToPhotoUrl;
     private Long createdById;
     private String createdByName;
+    private String feedback;
 
     public TaskDTO() {}
 
-    public TaskDTO(Long id, String title, String description, LocalDateTime deadline, TaskStatus status, TaskPriority priority, Long assignedToId, String assignedToName, Long createdById, String createdByName) {
+    public TaskDTO(Long id, String title, String description, LocalDateTime deadline, TaskStatus status, TaskPriority priority, Long assignedToId, String assignedToName, Long createdById, String createdByName, String feedback) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -30,6 +32,7 @@ public class TaskDTO {
         this.assignedToName = assignedToName;
         this.createdById = createdById;
         this.createdByName = createdByName;
+        this.feedback = feedback;
     }
 
     // Getters and Setters
@@ -57,6 +60,9 @@ public class TaskDTO {
     public String getAssignedToName() { return assignedToName; }
     public void setAssignedToName(String assignedToName) { this.assignedToName = assignedToName; }
 
+    public String getAssignedToPhotoUrl() { return assignedToPhotoUrl; }
+    public void setAssignedToPhotoUrl(String assignedToPhotoUrl) { this.assignedToPhotoUrl = assignedToPhotoUrl; }
+
     public Long getCreatedById() { return createdById; }
     public void setCreatedById(Long createdById) { this.createdById = createdById; }
 
@@ -67,6 +73,7 @@ public class TaskDTO {
     public static TaskDTO fromEntity(Task entity) {
         Long assignedToId = entity.getAssignedTo() != null ? entity.getAssignedTo().getIdu() : null;
         String assignedToName = null;
+        String assignedToPhotoUrl = null;
         if (entity.getAssignedTo() != null) {
             String nom = entity.getAssignedTo().getNom();
             String prenom = entity.getAssignedTo().getPrenom();
@@ -75,6 +82,7 @@ public class TaskDTO {
             } else {
                 assignedToName = nom + (prenom != null ? " " + prenom : "");
             }
+            assignedToPhotoUrl = entity.getAssignedTo().getPhoto_url();
         }
 
         Long createdById = entity.getCreatedBy() != null ? entity.getCreatedBy().getIdu() : null;
@@ -89,7 +97,7 @@ public class TaskDTO {
             }
         }
 
-        return new TaskDTO(
+        TaskDTO dto = new TaskDTO(
             entity.getId(),
             entity.getTitle(),
             entity.getDescription(),
@@ -99,7 +107,13 @@ public class TaskDTO {
             assignedToId,
             assignedToName,
             createdById,
-            createdByName
+            createdByName,
+            entity.getFeedback()
         );
+        dto.setAssignedToPhotoUrl(assignedToPhotoUrl);
+        return dto;
     }
+
+    public String getFeedback() { return feedback; }
+    public void setFeedback(String feedback) { this.feedback = feedback; }
 }

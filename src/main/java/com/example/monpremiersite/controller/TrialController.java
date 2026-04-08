@@ -17,21 +17,23 @@ public class TrialController {
     public TrialController(TrialRepository repo) { this.repo = repo; }
 
     @GetMapping
-    public List<TrialDTO> all() { 
-        return repo.findAll().stream()
-                .map(TrialDTO::fromEntity)
-                .collect(Collectors.toList());
+    public List<TrialDTO> all() {
+        return repo.findAll().stream().map(TrialDTO::fromEntity).collect(Collectors.toList());
+    }
+
+    @GetMapping("/case/{caseId}")
+    public List<TrialDTO> byCase(@PathVariable Long caseId) {
+        return repo.findByCaseEntity_Idc(caseId).stream().map(TrialDTO::fromEntity).collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TrialDTO> get(@PathVariable Long id) { 
-        return repo.findById(id)
-                .map(trial -> ResponseEntity.ok(TrialDTO.fromEntity(trial)))
+    public ResponseEntity<TrialDTO> get(@PathVariable Long id) {
+        return repo.findById(id).map(t -> ResponseEntity.ok(TrialDTO.fromEntity(t)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public TrialDTO create(@RequestBody Trial t) { 
+    public TrialDTO create(@RequestBody Trial t) {
         return TrialDTO.fromEntity(repo.save(t));
     }
 

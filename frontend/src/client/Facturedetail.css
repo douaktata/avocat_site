@@ -1,0 +1,540 @@
+/* ============================================================
+   FACTURE DETAIL — PAGE IMPRIMABLE
+   ============================================================ */
+
+.facture-detail-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* ══════════════════════════════
+   ACTIONS (cachées à l'impression)
+══════════════════════════════ */
+.facture-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.facture-actions-right {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.btn-back:hover {
+  border-color: var(--primary, #1e3a8a);
+  color: var(--primary);
+  transform: translateX(-3px);
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-print {
+  background: var(--primary, #1e3a8a);
+  color: white;
+}
+
+.btn-print:hover {
+  background: #1e40af;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.35);
+}
+
+.btn-download {
+  background: var(--gold, #c9a84c);
+  color: white;
+}
+
+.btn-download:hover {
+  background: #b89840;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(201, 168, 76, 0.35);
+}
+
+/* ══════════════════════════════
+   CONTAINER FACTURE
+══════════════════════════════ */
+.facture-container {
+  background: white;
+  padding: 3rem;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* ══════ HEADER ══════ */
+.facture-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+  border-bottom: 3px solid var(--primary, #1e3a8a);
+}
+
+.facture-logo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.facture-logo i {
+  font-size: 3rem;
+  color: var(--gold, #c9a84c);
+}
+
+.facture-logo h1 {
+  font-family: 'Playfair Display', 'Georgia', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary, #1e3a8a);
+  margin: 0;
+  line-height: 1;
+}
+
+.facture-logo p {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0.25rem 0 0 0;
+}
+
+.facture-title {
+  text-align: right;
+}
+
+.facture-title h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary, #1e3a8a);
+  margin: 0;
+  line-height: 1;
+}
+
+.facture-numero {
+  font-size: 1.125rem;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0.5rem 0 0 0;
+  font-family: 'Courier New', monospace;
+}
+
+/* ══════ PARTIES ══════ */
+.facture-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.partie-info h3 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.75rem 0;
+}
+
+.partie-info p {
+  font-size: 0.95rem;
+  color: #1e293b;
+  margin: 0.35rem 0;
+  line-height: 1.6;
+}
+
+.partie-info p strong {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* ══════ INFOS FACTURE ══════ */
+.facture-infos {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.info-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.facture-statut {
+  display: inline-block;
+  padding: 0.4rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.statut-paye {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.statut-attente {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* ══════ TABLEAU PRESTATIONS ══════ */
+.facture-table-container {
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 2px solid #f1f5f9;
+}
+
+.facture-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.facture-table thead {
+  background: linear-gradient(135deg, var(--primary, #1e3a8a), #2a4f9e);
+}
+
+.facture-table th {
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.facture-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.facture-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.facture-table td {
+  padding: 1rem;
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.td-center {
+  text-align: center;
+}
+
+.td-right {
+  text-align: right;
+}
+
+.td-bold {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* ══════ TOTAUX ══════ */
+.facture-totaux {
+  max-width: 400px;
+  margin-left: auto;
+  margin-bottom: 2rem;
+}
+
+.totaux-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+.totaux-row span:last-child {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.totaux-total {
+  border-top: 2px solid #f1f5f9;
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+  font-size: 1.125rem;
+  color: var(--primary);
+}
+
+.totaux-total span {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.totaux-separator {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 1rem 0;
+}
+
+.totaux-solde {
+  font-size: 1.125rem;
+  padding-top: 1rem;
+  border-top: 2px solid #f1f5f9;
+}
+
+.text-success {
+  color: #10b981 !important;
+}
+
+.text-danger {
+  color: #ef4444 !important;
+}
+
+/* ══════ PAIEMENTS EFFECTUÉS ══════ */
+.facture-paiements {
+  margin-bottom: 2rem;
+}
+
+.facture-paiements h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0 0 1rem 0;
+}
+
+.paiements-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid #f1f5f9;
+  border-radius: 8px;
+}
+
+.paiements-table thead {
+  background: #f9fafb;
+}
+
+.paiements-table th {
+  padding: 0.75rem;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1e293b;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.paiements-table td {
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+/* ══════ NOTES ══════ */
+.facture-notes {
+  background: #eff6ff;
+  border: 2px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.facture-notes h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0 0 0.75rem 0;
+}
+
+.facture-notes p {
+  font-size: 0.875rem;
+  color: #475569;
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.note-legale {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+/* ══════ FOOTER ══════ */
+.facture-footer {
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 2px solid #f1f5f9;
+}
+
+.facture-footer p {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin: 0.25rem 0;
+}
+
+/* ══════ NOT FOUND ══════ */
+.not-found {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.not-found i {
+  font-size: 4rem;
+  color: #cbd5e1;
+  margin-bottom: 1rem;
+}
+
+.not-found h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 1.5rem 0;
+}
+
+/* ══════════════════════════════
+   PRINT STYLES
+══════════════════════════════ */
+@media print {
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+
+  body {
+    background: white;
+  }
+
+  .facture-detail-page {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .facture-container {
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .facture-header {
+    page-break-after: avoid;
+  }
+
+  .facture-table-container {
+    page-break-inside: avoid;
+  }
+
+  .facture-totaux {
+    page-break-inside: avoid;
+  }
+
+  /* Éviter les coupures */
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Couleurs pour l'impression */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* ══════ RESPONSIVE ══════ */
+@media (max-width: 768px) {
+  .facture-container {
+    padding: 2rem 1.5rem;
+  }
+
+  .facture-header {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .facture-title {
+    text-align: left;
+  }
+
+  .facture-title h2 {
+    font-size: 2rem;
+  }
+
+  .facture-parties {
+    grid-template-columns: 1fr;
+  }
+
+  .facture-infos {
+    grid-template-columns: 1fr;
+  }
+
+  .facture-totaux {
+    max-width: 100%;
+  }
+
+  .facture-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .facture-actions-right {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .btn-action,
+  .btn-back {
+    width: 100%;
+    justify-content: center;
+  }
+}

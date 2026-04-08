@@ -4,6 +4,7 @@ public class UserInfoDTO {
     private Long idu;
     private String nom;
     private String prenom;
+    private String photo_url;
 
     public UserInfoDTO() {}
 
@@ -11,6 +12,13 @@ public class UserInfoDTO {
         this.idu = idu;
         this.nom = nom;
         this.prenom = prenom;
+    }
+
+    public UserInfoDTO(Long idu, String nom, String prenom, String photo_url) {
+        this.idu = idu;
+        this.nom = nom;
+        this.prenom = prenom;
+        this.photo_url = photo_url;
     }
 
     // Getters and Setters
@@ -22,4 +30,7 @@ public class UserInfoDTO {
 
     public String getPrenom() { return prenom; }
     public void setPrenom(String prenom) { this.prenom = prenom; }
+
+    public String getPhoto_url() { return photo_url; }
+    public void setPhoto_url(String photo_url) { this.photo_url = photo_url; }
 }

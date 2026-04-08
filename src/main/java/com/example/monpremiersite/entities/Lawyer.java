@@ -15,6 +15,10 @@ public class Lawyer {
     private String bureau;
     private String region;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private com.example.monpremiersite.entities.User user;
+
     public Long getIdl() { return idl; }
     public void setIdl(Long idl) { this.idl = idl; }
 
@@ -32,4 +36,7 @@ public class Lawyer {
 
     public String getRegion() { return region; }
     public void setRegion(String region) { this.region = region; }
+
+    public com.example.monpremiersite.entities.User getUser() { return user; }
+    public void setUser(com.example.monpremiersite.entities.User user) { this.user = user; }
 }

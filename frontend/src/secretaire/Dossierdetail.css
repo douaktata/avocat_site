@@ -1,0 +1,242 @@
+/* ============================================================
+   DOSSIER DETAIL — SECRÉTAIRE  (extends Dossierdetailav.css)
+   ============================================================ */
+
+/* ── Section ── */
+.dd-section {
+  background: white;
+  border-radius: 16px;
+  border: 1.5px solid #e5e7eb;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+.dd-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8faff;
+  gap: 1rem;
+}
+
+.dd-section-header h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dd-section-header h2 i { font-size: 0.9rem; }
+
+/* ── Table ── */
+.dd-table-wrap {
+  overflow-x: auto;
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+.dd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 540px;
+}
+
+.dd-table thead tr {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+}
+
+.dd-table thead th {
+  padding: 0.8rem 1rem;
+  text-align: left;
+  color: rgba(255,255,255,0.9);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.dd-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s;
+}
+
+.dd-table tbody tr:last-child { border-bottom: none; }
+.dd-table tbody tr:hover { background: #f0f7ff; }
+
+.dd-table td {
+  padding: 0.85rem 1rem;
+  color: #1f2937;
+  vertical-align: middle;
+}
+
+.td-bold { font-weight: 600; color: #1e3a8a; }
+
+.dd-row-highlight { background: #eff6ff; }
+
+/* ── Type chip in table ── */
+.dd-type-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* ── Badges ── */
+.dd-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-upcoming  { background: #dbeafe; color: #1d4ed8; }
+.badge-done      { background: #d1fae5; color: #065f46; }
+.badge-pending   { background: #fef3c7; color: #92400e; }
+.badge-cancelled { background: #fee2e2; color: #991b1b; }
+
+/* ── Icon buttons ── */
+.dd-icon-btn {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  transition: all 0.18s;
+}
+
+.dd-icon-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+
+.dd-icon-btn-danger:hover { border-color: #ef4444; color: #ef4444; background: #fee2e2; }
+
+/* ── Inline upload form ── */
+.dd-inline-form {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8faff;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dd-form-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dd-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 200px;
+}
+
+.dd-form-group label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dd-form-group input,
+.dd-form-group select,
+.dd-form-group textarea {
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  background: white;
+}
+
+.dd-form-group input:focus,
+.dd-form-group select:focus,
+.dd-form-group textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+}
+
+.dd-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* ── Info grid (infos tab, tribunal tab) ── */
+.dd-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.dd-info-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  background: #f8faff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.dd-info-card > i {
+  font-size: 1.1rem;
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+.dd-info-card label {
+  display: block;
+  font-size: 0.73rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  margin-bottom: 0.25rem;
+}
+
+.dd-info-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e3a8a;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* ── Empty inside section ── */
+.dd-section .dd-empty {
+  padding: 3.5rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dd-section .dd-empty i { font-size: 2.5rem; color: #cbd5e1; }
+.dd-section .dd-empty p { margin: 0; font-weight: 600; color: #64748b; }

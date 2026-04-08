@@ -27,6 +27,8 @@ public class User {
 
     private LocalDateTime created_at;
     private LocalDate date_naissance;
+    private String statut = "Actif";
+    private String photo_url;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_role",
@@ -64,6 +66,12 @@ public class User {
 
     public LocalDate getDate_naissance() { return date_naissance; }
     public void setDate_naissance(LocalDate date_naissance) { this.date_naissance = date_naissance; }
+
+    public String getStatut() { return statut; }
+    public void setStatut(String statut) { this.statut = statut; }
+
+    public String getPhoto_url() { return photo_url; }
+    public void setPhoto_url(String photo_url) { this.photo_url = photo_url; }
 
     public Set<Role> getRoles() { return roles; }
     public void setRoles(Set<Role> roles) { this.roles = roles; }

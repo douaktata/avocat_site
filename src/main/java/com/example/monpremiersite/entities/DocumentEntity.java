@@ -23,6 +23,10 @@ public class DocumentEntity {
     @JoinColumn(name = "uploaded_by")
     private User uploadedBy;
 
+    @ManyToOne
+    @JoinColumn(name = "task_id")
+    private Task task;
+
     public Long getIdd() { return idd; }
     public void setIdd(Long idd) { this.idd = idd; }
 
@@ -43,4 +47,7 @@ public class DocumentEntity {
 
     public User getUploadedBy() { return uploadedBy; }
     public void setUploadedBy(User uploadedBy) { this.uploadedBy = uploadedBy; }
+
+    public Task getTask() { return task; }
+    public void setTask(Task task) { this.task = task; }
 }

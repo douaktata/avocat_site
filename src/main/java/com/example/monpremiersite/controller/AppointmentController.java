@@ -7,7 +7,10 @@ import com.example.monpremiersite.repository.AppointmentRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -20,6 +23,22 @@ public class AppointmentController {
     @GetMapping
     public List<AppointmentDTO> all() {
         return repo.findAll().stream()
+                .map(AppointmentMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/today")
+    public List<AppointmentDTO> today() {
+        LocalDateTime start = LocalDate.now().atStartOfDay();
+        LocalDateTime end = start.plusDays(1);
+        return repo.findByAppointment_dateBetween(start, end).stream()
+                .map(AppointmentMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/user/{userId}")
+    public List<AppointmentDTO> byUser(@PathVariable Long userId) {
+        return repo.findByUser_Idu(userId).stream()
                 .map(AppointmentMapper::toDTO)
                 .collect(Collectors.toList());
     }
@@ -45,12 +64,18 @@ public class AppointmentController {
         return ResponseEntity.ok(AppointmentMapper.toDTO(updated));
     }
 
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<AppointmentDTO> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return repo.findById(id).map(a -> {
+            a.setStatus(body.get("status"));
+            return ResponseEntity.ok(AppointmentMapper.toDTO(repo.save(a)));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (!repo.existsById(id)) return ResponseEntity.notFound().build();
         repo.deleteById(id);
         return ResponseEntity.noContent().build();
     }
-
-
 }

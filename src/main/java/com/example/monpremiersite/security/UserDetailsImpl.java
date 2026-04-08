@@ -13,13 +13,15 @@ public class UserDetailsImpl implements UserDetails {
     private Long idu;
     private String email;
     private String password;
+    private String statut;
     private Collection<? extends GrantedAuthority> authorities;
 
-    public UserDetailsImpl(Long idu, String email, String password,
+    public UserDetailsImpl(Long idu, String email, String password, String statut,
                            Collection<? extends GrantedAuthority> authorities) {
         this.idu = idu;
         this.email = email;
         this.password = password;
+        this.statut = statut;
         this.authorities = authorities;
     }
 
@@ -32,6 +34,7 @@ public class UserDetailsImpl implements UserDetails {
                 user.getIdu(),
                 user.getEmail(),
                 user.getPassword(),
+                user.getStatut(),
                 authorities
         );
     }
@@ -42,7 +45,7 @@ public class UserDetailsImpl implements UserDetails {
     @Override public String getPassword() { return password; }
     @Override public Collection<? extends GrantedAuthority> getAuthorities() { return authorities; }
     @Override public boolean isAccountNonExpired() { return true; }
-    @Override public boolean isAccountNonLocked() { return true; }
+    @Override public boolean isAccountNonLocked() { return !"Bloqué".equals(statut); }
     @Override public boolean isCredentialsNonExpired() { return true; }
     @Override public boolean isEnabled() { return true; }
 }
