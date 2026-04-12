@@ -1,20 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { Calendar, Phone, Users, AlertCircle, PhoneCall } from 'lucide-react';
 import { getTodayAppointments, getPhoneCalls, getTasks, getUsersByRole } from '../api';
 import { useAuth } from '../AuthContext';
 import './DashboardSecretaire.css';
 
-const DashboardSecretaire = () => {
+const fmt = (date) =>
+  date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const fmtDate = (date) =>
+  date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const fmtHeure = (str) =>
+  str ? new Date(str).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+const fmtCallTime = (str) =>
+  str ? new Date(str).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+
+function statusBadge(status) {
+  const s = (status || '').toUpperCase();
+  if (s === 'CONFIRMED') return { cls: 'badge badge-green', label: 'Confirmé' };
+  if (s === 'CANCELLED') return { cls: 'badge badge-red',   label: 'Annulé' };
+  return { cls: 'badge badge-amber', label: 'En attente' };
+}
+
+function priorityDot(p) {
+  if (p === 'HIGH')   return 'high';
+  if (p === 'MEDIUM') return 'medium';
+  return 'low';
+}
+
+export default function DashboardSecretaire() {
   const { user } = useAuth();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [rdvAujourdhui, setRdvAujourdhui] = useState([]);
-  const [appelsRecents, setAppelsRecents] = useState([]);
+  const [now, setNow] = useState(new Date());
+  const [rdv, setRdv] = useState([]);
+  const [appels, setAppels] = useState([]);
   const [taches, setTaches] = useState([]);
   const [totalClients, setTotalClients] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -23,132 +46,115 @@ const DashboardSecretaire = () => {
       getPhoneCalls(),
       getTasks(),
       getUsersByRole('CLIENT'),
-    ]).then(([rdvRes, callsRes, tasksRes, clientsRes]) => {
-      setRdvAujourdhui(rdvRes.data);
-      setAppelsRecents(callsRes.data.slice(0, 5));
-      setTaches(tasksRes.data.slice(0, 5));
-      setTotalClients(clientsRes.data.length);
-    }).catch(console.error)
-      .finally(() => setLoading(false));
+    ]).then(([r1, r2, r3, r4]) => {
+      setRdv(r1.data.sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate)));
+      setAppels(r2.data.slice(0, 5));
+      setTaches(r3.data.slice(0, 6));
+      setTotalClients(r4.data.length);
+    }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  const formatTime = (date) =>
-    date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const formatDateLong = (date) =>
-    date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const formatHeure = (dateStr) =>
-    dateStr ? new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '-';
+  if (loading) return <div className="dash-loading">Chargement…</div>;
 
-  const now = currentTime;
-
-  const rdvTries = [...rdvAujourdhui].sort(
-    (a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate)
-  );
-  const rdvAVenir = rdvTries.filter(r => new Date(r.appointmentDate) >= now);
-  const rdvPasses = rdvTries.filter(r => new Date(r.appointmentDate) < now);
-
+  const rdvAVenir = rdv.filter(r => new Date(r.appointmentDate) >= now);
+  const rdvPasses = rdv.filter(r => new Date(r.appointmentDate) < now);
   const rdvConfirmes = rdvAVenir.filter(r => (r.status || '').toUpperCase() === 'CONFIRMED').length;
-  const rdvEnAttente = rdvAVenir.filter(r => (r.status || '').toUpperCase() === 'PENDING').length;
-  const tachesUrgentes = taches.filter(t => t.priority === 'HIGH').length;
+  const rdvAttente   = rdvAVenir.filter(r => (r.status || '').toUpperCase() === 'PENDING').length;
+  const urgentes     = taches.filter(t => t.priority === 'HIGH').length;
 
-  const getStatutBadge = (status) => {
-    const s = (status || '').toUpperCase();
-    if (s === 'CONFIRMED') return { class: 'status-confirmed', label: 'Confirme' };
-    if (s === 'CANCELLED') return { class: 'status-cancelled', label: 'Annule' };
-    return { class: 'status-pending', label: 'En attente' };
-  };
-
-  const getPriorityClass = (p) =>
-    ({ HIGH: 'priority-high', MEDIUM: 'priority-medium', LOW: 'priority-low' }[p] || 'priority-medium');
-
-  if (loading) return <div className="dashboard-secretaire"><p style={{padding:'2rem'}}>Chargement...</p></div>;
+  const clientName = (r) =>
+    r.user ? `${r.user.prenom || ''} ${r.user.nom || ''}`.trim() : (r.clientName || '—');
 
   return (
-    <div className="dashboard-secretaire">
-      <div className="dash-hero">
-        <div className="hero-left">
-          <div className="greeting-section">
-            <h1 className="greeting-title">
-              Bonjour, <span className="user-name">{user?.prenom || 'Secretaire'}</span>
-            </h1>
-            <p className="greeting-subtitle">Voici votre activite du jour</p>
+    <div className="dash">
+      {/* Header */}
+      <div className="dash-header">
+        <div className="dash-header-left">
+          <h1>Bonjour, {user?.prenom || 'Secrétaire'} 👋</h1>
+          <p>Voici votre activité du jour</p>
+        </div>
+        <div className="dash-datetime">
+          <span className="dash-time">{fmt(now)}</span>
+          <span className="dash-date">{fmtDate(now)}</span>
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <div className="kpi-icon blue"><Calendar size={18} /></div>
+          <div className="kpi-body">
+            <div className="kpi-value">
+              {rdvAVenir.length}<span style={{fontSize:'1rem',fontWeight:500,color:'#94a3b8'}}> / {rdv.length}</span>
+            </div>
+            <div className="kpi-label">RDV restants aujourd'hui</div>
+            <div className="kpi-sub">
+              <span className="ok">{rdvConfirmes} confirmés</span>
+              <span className="warn">{rdvAttente} en attente</span>
+            </div>
           </div>
         </div>
-        <div className="hero-right">
-          <div className="datetime-card">
-            <div className="time-display">{formatTime(currentTime)}</div>
-            <div className="date-display">{formatDateLong(currentTime)}</div>
+
+        <div className="kpi-card">
+          <div className="kpi-icon green"><Phone size={18} /></div>
+          <div className="kpi-body">
+            <div className="kpi-value">{appels.length}</div>
+            <div className="kpi-label">Appels récents</div>
+            <div className="kpi-sub"><span className="muted">Enregistrés</span></div>
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <div className="kpi-icon amber"><Users size={18} /></div>
+          <div className="kpi-body">
+            <div className="kpi-value">{totalClients}</div>
+            <div className="kpi-label">Clients au cabinet</div>
+            <div className="kpi-sub"><span className="muted">Total</span></div>
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <div className="kpi-icon red"><AlertCircle size={18} /></div>
+          <div className="kpi-body">
+            <div className="kpi-value">
+              {urgentes}<span style={{fontSize:'1rem',fontWeight:500,color:'#94a3b8'}}> / {taches.length}</span>
+            </div>
+            <div className="kpi-label">Tâches urgentes</div>
+            <div className="kpi-sub"><span className="muted">À traiter en priorité</span></div>
           </div>
         </div>
       </div>
 
-      <div className="stats-grid">
-        <div className="stat-card primary">
-          <div className="stat-icon"><i className="fas fa-calendar-check"></i></div>
-          <div className="stat-content">
-            <h3>{rdvAVenir.length} <span style={{fontSize:'0.85rem',fontWeight:500,opacity:0.7}}>/ {rdvAujourdhui.length}</span></h3>
-            <p>RDV restants aujourd'hui</p>
-            <div className="stat-detail">
-              <span className="detail-success">{rdvConfirmes} confirmes</span>
-              <span className="detail-warning">{rdvEnAttente} en attente</span>
+      {/* Body */}
+      <div className="dash-body">
+        {/* Left column */}
+        <div>
+          {/* Timeline RDV */}
+          <div className="d-card">
+            <div className="d-card-head">
+              <h3><Calendar size={15} /> Rendez-vous du jour</h3>
+              <span className="d-card-count">{rdv.length} total</span>
             </div>
-          </div>
-        </div>
-        <div className="stat-card success">
-          <div className="stat-icon"><i className="fas fa-phone-volume"></i></div>
-          <div className="stat-content">
-            <h3>{appelsRecents.length}</h3>
-            <p>Appels recents</p>
-            <div className="stat-detail"><span>Enregistres</span></div>
-          </div>
-        </div>
-        <div className="stat-card warning">
-          <div className="stat-icon"><i className="fas fa-users"></i></div>
-          <div className="stat-content">
-            <h3>{totalClients}</h3>
-            <p>Clients au cabinet</p>
-            <div className="stat-detail"><span>Total</span></div>
-          </div>
-        </div>
-        <div className="stat-card danger">
-          <div className="stat-icon"><i className="fas fa-tasks"></i></div>
-          <div className="stat-content">
-            <h3>{tachesUrgentes}/{taches.length}</h3>
-            <p>Taches urgentes</p>
-            <div className="stat-detail"><span>A traiter en priorite</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="dashboard-content">
-        <div className="content-left">
-          <div className="content-card">
-            <div className="card-header">
-              <h3><i className="fas fa-calendar-alt"></i> Rendez-vous du jour</h3>
-            </div>
-            <div className="rdv-timeline">
-              {rdvAujourdhui.length === 0 ? (
-                <p style={{padding:'1rem',color:'#888'}}>Aucun rendez-vous aujourd'hui</p>
+            <div className="d-card-body">
+              {rdv.length === 0 ? (
+                <div className="empty-state">Aucun rendez-vous aujourd'hui</div>
               ) : (
-                <>
-                  {rdvAVenir.length === 0 && (
-                    <p style={{padding:'0.75rem 1rem',color:'#888',fontStyle:'italic',fontSize:'0.875rem'}}>
-                      <i className="fas fa-check-circle" style={{color:'#10b981',marginRight:'0.4rem'}}></i>
-                      Tous les rendez-vous du jour sont terminés
-                    </p>
-                  )}
-                  {rdvAVenir.map(rdv => {
-                    const statut = getStatutBadge(rdv.status);
+                <div className="timeline">
+                  {rdvAVenir.map((r, i) => {
+                    const { cls, label } = statusBadge(r.status);
                     return (
-                      <div key={rdv.ida} className="timeline-item">
-                        <div className="timeline-time">{formatHeure(rdv.appointmentDate)}</div>
-                        <div className="timeline-dot"></div>
-                        <div className="timeline-content">
-                          <div className="timeline-header">
-                            <h4>{rdv.user ? `${rdv.user.prenom || ''} ${rdv.user.nom || ''}` : (rdv.clientName || '-')}</h4>
-                            <span className={`status-badge ${statut.class}`}>{statut.label}</span>
+                      <div key={r.ida} className="tl-item">
+                        <div className="tl-time">{fmtHeure(r.appointmentDate)}</div>
+                        <div className="tl-track">
+                          <div className="tl-dot" />
+                          {i < rdvAVenir.length - 1 || rdvPasses.length > 0 ? <div className="tl-line" /> : null}
+                        </div>
+                        <div className="tl-content">
+                          <div className="tl-row">
+                            <span className="tl-name">{clientName(r)}</span>
+                            <span className={cls}>{label}</span>
                           </div>
-                          <p className="timeline-type">{rdv.reason || '-'}</p>
+                          <p className="tl-reason">{r.reason || '—'}</p>
                         </div>
                       </div>
                     );
@@ -156,82 +162,81 @@ const DashboardSecretaire = () => {
 
                   {rdvPasses.length > 0 && (
                     <>
-                      <div className="timeline-separator">
-                        <span><i className="fas fa-history"></i> Passes ({rdvPasses.length})</span>
-                      </div>
-                      {rdvPasses.map(rdv => {
-                        const statut = getStatutBadge(rdv.status);
-                        return (
-                          <div key={rdv.ida} className="timeline-item timeline-item-past">
-                            <div className="timeline-time timeline-time-past">{formatHeure(rdv.appointmentDate)}</div>
-                            <div className="timeline-dot timeline-dot-past"></div>
-                            <div className="timeline-content">
-                              <div className="timeline-header">
-                                <h4>{rdv.user ? `${rdv.user.prenom || ''} ${rdv.user.nom || ''}` : (rdv.clientName || '-')}</h4>
-                                <span className="status-badge status-past">Passe</span>
-                              </div>
-                              <p className="timeline-type">{rdv.reason || '-'}</p>
-                            </div>
+                      <div className="tl-sep">Passés ({rdvPasses.length})</div>
+                      {rdvPasses.map(r => (
+                        <div key={r.ida} className="tl-item">
+                          <div className="tl-time" style={{color:'#cbd5e1'}}>{fmtHeure(r.appointmentDate)}</div>
+                          <div className="tl-track">
+                            <div className="tl-dot past" />
                           </div>
-                        );
-                      })}
+                          <div className="tl-content">
+                            <div className="tl-row">
+                              <span className="tl-name past">{clientName(r)}</span>
+                              <span className="badge badge-slate">Passé</span>
+                            </div>
+                            <p className="tl-reason">{r.reason || '—'}</p>
+                          </div>
+                        </div>
+                      ))}
                     </>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>
 
-          <div className="content-card">
-            <div className="card-header">
-              <h3><i className="fas fa-phone"></i> Appels recents</h3>
+          {/* Calls */}
+          <div className="d-card">
+            <div className="d-card-head">
+              <h3><Phone size={15} /> Appels récents</h3>
+              <span className="d-card-count">{appels.length}</span>
             </div>
-            <div className="calls-list">
-              {appelsRecents.length === 0 ? (
-                <p style={{padding:'1rem',color:'#888'}}>Aucun appel enregistre</p>
-              ) : appelsRecents.map(appel => (
-                <div key={appel.id} className="call-item">
-                  <div className="call-icon"><i className="fas fa-phone"></i></div>
-                  <div className="call-info">
-                    <h4>{appel.caller_full_name}</h4>
-                    <p>{appel.call_reason}</p>
-                  </div>
-                  <div className="call-meta">
-                    <span className="call-time">
-                      {appel.call_date ? new Date(appel.call_date).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}) : '-'}
-                    </span>
-                  </div>
+            <div className="d-card-body">
+              {appels.length === 0 ? (
+                <div className="empty-state">Aucun appel enregistré</div>
+              ) : (
+                <div className="call-list">
+                  {appels.map(a => (
+                    <div key={a.id} className="call-row">
+                      <div className="call-avatar"><PhoneCall size={15} /></div>
+                      <div className="call-info">
+                        <p className="call-name">{a.caller_full_name || '—'}</p>
+                        <p className="call-reason">{a.call_reason || '—'}</p>
+                      </div>
+                      <span className="call-time">{fmtCallTime(a.call_date)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
 
-        <div className="content-right">
-          <div className="content-card">
-            <div className="card-header">
-              <h3><i className="fas fa-clipboard-list"></i> Taches recentes</h3>
+        {/* Right column */}
+        <div>
+          <div className="d-card">
+            <div className="d-card-head">
+              <h3><AlertCircle size={15} /> Tâches récentes</h3>
+              <span className="d-card-count">{taches.length}</span>
             </div>
-            <div className="tasks-list">
+            <div className="d-card-body">
               {taches.length === 0 ? (
-                <p style={{padding:'1rem',color:'#888'}}>Aucune tache</p>
-              ) : taches.map(tache => (
-                <div key={tache.id} className={`task-item ${tache.status === 'COMPLETED' ? 'completed' : ''}`}>
-                  <input type="checkbox" checked={tache.status === 'COMPLETED'} readOnly className="task-checkbox" />
-                  <div className="task-content">
-                    <p className={tache.status === 'COMPLETED' ? 'task-completed' : ''}>{tache.title}</p>
-                    <span className={`task-priority ${getPriorityClass(tache.priority)}`}>
-                      <i className={tache.priority === 'HIGH' ? 'fas fa-exclamation-circle' : 'fas fa-minus-circle'}></i>
-                    </span>
-                  </div>
+                <div className="empty-state">Aucune tâche</div>
+              ) : (
+                <div className="task-list">
+                  {taches.map(t => (
+                    <div key={t.id} className={`task-row${t.status === 'COMPLETED' ? ' done' : ''}`}>
+                      <input type="checkbox" checked={t.status === 'COMPLETED'} readOnly />
+                      <span className="task-title">{t.title}</span>
+                      <span className={`priority-dot ${priorityDot(t.priority)}`} />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default DashboardSecretaire;
+}

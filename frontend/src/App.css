@@ -1,4 +1,4 @@
-/* ===== Floating law-themed shapes ===== */
+/* ===== Floating decorative shapes ===== */
 .bg-shapes {
   position: fixed;
   top: 0; left: 0;
@@ -10,66 +10,51 @@
 
 .floating-shape {
   position: absolute;
-  color: #91C8E4;
-  opacity: 0.18;
+  opacity: 0.07;
 }
 
-.floating-shape svg {
-  width: 100%;
-  height: 100%;
-}
+.floating-shape svg { width: 100%; height: 100%; }
 
 .floating-shape.shape-1 {
-  width: 180px; height: 180px;
-  top: -30px; left: -30px;
+  width: 200px; height: 200px;
+  top: -40px; left: -40px;
   animation: floatShape 22s ease-in-out infinite;
-  color: #749BC2;
-  opacity: 0.14;
+  color: #12007e;
 }
-
 .floating-shape.shape-2 {
-  width: 120px; height: 120px;
-  top: 15%; right: 8%;
+  width: 130px; height: 130px;
+  top: 12%; right: 6%;
   animation: floatShape 18s ease-in-out infinite;
   animation-delay: -4s;
-  color: #4682A9;
-  opacity: 0.12;
+  color: #8c5d49;
 }
-
 .floating-shape.shape-3 {
   width: 100px; height: 100px;
-  bottom: 20%; left: 6%;
+  bottom: 18%; left: 5%;
   animation: floatShape 25s ease-in-out infinite;
   animation-delay: -8s;
-  color: #91C8E4;
-  opacity: 0.16;
+  color: #5e4dc7;
 }
-
 .floating-shape.shape-4 {
-  width: 140px; height: 140px;
-  bottom: -20px; right: -20px;
+  width: 150px; height: 150px;
+  bottom: -30px; right: -20px;
   animation: floatShape 20s ease-in-out infinite;
   animation-delay: -12s;
-  color: #749BC2;
-  opacity: 0.13;
+  color: #12007e;
 }
-
 .floating-shape.shape-5 {
   width: 90px; height: 90px;
-  top: 55%; left: 50%;
+  top: 55%; left: 52%;
   animation: floatShape 24s ease-in-out infinite;
   animation-delay: -6s;
-  color: #4682A9;
-  opacity: 0.10;
+  color: #8c5d49;
 }
-
 .floating-shape.shape-6 {
   width: 110px; height: 110px;
-  top: 8%; left: 45%;
+  top: 6%; left: 42%;
   animation: floatShape 19s ease-in-out infinite;
   animation-delay: -14s;
-  color: #91C8E4;
-  opacity: 0.12;
+  color: #5e4dc7;
 }
 
 @keyframes floatShape {
@@ -79,262 +64,7 @@
   75% { transform: translate(10px, 25px) rotate(2deg); }
 }
 
-/* ===== Center layout ===== */
-.auth-layout {
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(160deg, #F6F4EB 0%, #e8e4d9 40%, #dce8f0 100%);
-}
-
-/* ===== Glass card ===== */
-.glass-card {
-  position: relative;
-  z-index: 1;
-  width: 460px;
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(70, 130, 169, 0.12);
-  border-radius: 24px;
-  padding: 48px 40px;
-  box-shadow:
-    0 20px 60px rgba(70, 130, 169, 0.10),
-    0 4px 16px rgba(0, 0, 0, 0.04);
-  animation: cardAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes cardAppear {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ===== Logo ===== */
-.logo-icon {
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, #4682A9, #749BC2);
-  border-radius: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-  box-shadow: 0 8px 28px rgba(70, 130, 169, 0.30);
-  animation: pulseGlow 3s ease-in-out infinite;
-}
-
-.logo-icon svg { width: 34px; height: 34px; }
-
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 8px 28px rgba(70, 130, 169, 0.30); }
-  50% { box-shadow: 0 8px 44px rgba(70, 130, 169, 0.45); }
-}
-
-.app-title {
-  text-align: center;
-  font-size: 28px;
-  font-weight: 700;
-  color: #2c3e50;
-  letter-spacing: -0.5px;
-  margin-bottom: 4px;
-}
-
-.app-subtitle {
-  text-align: center;
-  color: #4a7a9b;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 32px;
-}
-
-/* ===== Tabs ===== */
-.tabs {
-  display: flex;
-  background: rgba(70, 130, 169, 0.06);
-  border-radius: 14px;
-  padding: 4px;
-  margin-bottom: 28px;
-  border: 1px solid rgba(70, 130, 169, 0.08);
-}
-
-.tab {
-  flex: 1;
-  padding: 11px;
-  text-align: center;
-  cursor: pointer;
-  border-radius: 11px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #749BC2;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  border: none;
-  background: none;
-}
-
-.tab:hover { color: #4682A9; }
-
-.tab.active {
-  background: linear-gradient(135deg, #4682A9, #749BC2);
-  color: #fff;
-  box-shadow: 0 4px 16px rgba(70, 130, 169, 0.30);
-}
-
-/* ===== Form fields ===== */
-.form-group {
-  margin-bottom: 18px;
-  animation: fieldAppear 0.5s ease forwards;
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.form-group:nth-child(1) { animation-delay: 0.1s; }
-.form-group:nth-child(2) { animation-delay: 0.15s; }
-.form-group:nth-child(3) { animation-delay: 0.2s; }
-.form-group:nth-child(4) { animation-delay: 0.25s; }
-.form-group:nth-child(5) { animation-delay: 0.3s; }
-.form-group:nth-child(6) { animation-delay: 0.35s; }
-.form-group:nth-child(7) { animation-delay: 0.4s; }
-.form-group:nth-child(8) { animation-delay: 0.45s; }
-
-@keyframes fieldAppear {
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #5a7a8a;
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1.5px solid rgba(116, 155, 194, 0.25);
-  border-radius: 12px;
-  background: rgba(246, 244, 235, 0.5);
-  color: #2c3e50;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  outline: none;
-  transition: all 0.3s ease;
-}
-
-.form-group input::placeholder { color: #7a939e; }
-
-.form-group input:focus,
-.form-group select:focus {
-  border-color: #4682A9;
-  background: rgba(145, 200, 228, 0.08);
-  box-shadow: 0 0 0 3px rgba(70, 130, 169, 0.12);
-}
-
-.form-group select {
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%234682A9'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-}
-
-.form-group select option {
-  background: #fff;
-  color: #2c3e50;
-}
-
-.row { display: flex; gap: 12px; }
-.row .form-group { flex: 1; }
-
-/* ===== Submit button ===== */
-.btn-submit {
-  width: 100%;
-  padding: 13px;
-  background: linear-gradient(135deg, #4682A9, #749BC2);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-submit:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(70, 130, 169, 0.35);
-}
-
-.btn-submit:active { transform: translateY(0); }
-
-.btn-submit:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-submit.loading {
-  pointer-events: none;
-}
-
-/* ===== Spinner ===== */
-.spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  margin-right: 8px;
-  vertical-align: middle;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ===== Messages ===== */
-.message {
-  margin-top: 16px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 500;
-  animation: msgAppear 0.4s ease;
-}
-
-@keyframes msgAppear {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.message.error {
-  background: rgba(220, 53, 69, 0.08);
-  color: #a93226;
-  border: 1px solid rgba(220, 53, 69, 0.15);
-}
-
-.message.success {
-  background: rgba(39, 174, 96, 0.08);
-  color: #1e8449;
-  border: 1px solid rgba(39, 174, 96, 0.15);
-}
-
-/* ===== Form transition ===== */
-.form-enter {
-  animation: formFadeIn 0.4s ease forwards;
-}
-
-@keyframes formFadeIn {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
+/* Auth page styles moved to src/pages/AuthPage.css */
 
 /* ===== Dashboard ===== */
 .dashboard-layout {

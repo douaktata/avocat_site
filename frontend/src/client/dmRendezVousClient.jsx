@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { createAppointment, getSlots, getCasesByClient } from '../api';
+import API, { createAppointment, getCasesByClient } from '../api';
 
 
 const generateTimeSlots = (debut, fin, duree) => {
@@ -30,8 +30,8 @@ const DmRendezVousClient = () => {
   const [slotsError, setSlotsError] = useState(false);
 
   useEffect(() => {
-    getSlots()
-      .then(res => setSlots(res.data.filter(s => s.actif)))
+    API.get('/slots')
+      .then(res => setSlots((res.data || []).filter(s => s.actif)))
       .catch(() => setSlotsError(true))
       .finally(() => setLoadingSlots(false));
     if (user?.idu) {
@@ -213,7 +213,7 @@ const DmRendezVousClient = () => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {daysWithSlots.map(day => (
-                  <div key={day.jour} style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div key={day.full} style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
                     <div style={{ background: '#f1f5f9', padding: '0.65rem 1rem', fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', textTransform: 'capitalize' }}>
                       📅 {day.label}
                     </div>

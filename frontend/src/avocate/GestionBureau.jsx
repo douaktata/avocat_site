@@ -1,488 +1,384 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { getPhoneCalls, createPhoneCall, deletePhoneCall, getPresenceJournals, createPresenceJournal, deletePresenceJournal, getUsersByRole } from '../api';
+import {
+  Phone, DoorOpen, Plus, Trash2, X, UserCheck,
+  PhoneCall, CreditCard, Building2, Clock,
+  Search, Users, TrendingUp, CalendarDays,
+  CheckCircle2, Sparkles
+} from 'lucide-react';
+import {
+  getPhoneCalls, createPhoneCall, deletePhoneCall,
+  getPresenceJournals, createPresenceJournal, deletePresenceJournal,
+  getUsersByRole
+} from '../api';
 import './GestionBureau.css';
 
-const fmtDT = d => d ? new Date(d).toLocaleString('fr-FR', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+/* ── utils ──────────────────────────────────────────── */
+const fmtTime  = d => d ? new Date(d).toLocaleTimeString('fr-FR',  { hour:'2-digit', minute:'2-digit' }) : '—';
+const fmtDate  = d => d ? new Date(d).toLocaleDateString('fr-FR',  { weekday:'short', day:'2-digit', month:'short' }) : '—';
+const fmtFull  = d => d ? new Date(d).toLocaleString('fr-FR', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+const isToday  = d => d && new Date(d).toDateString() === new Date().toDateString();
+const uid      = () => { try { return JSON.parse(localStorage.getItem('user'))?.idu||null; } catch { return null; } };
+const partsToISO = p => (p.day && p.month && p.year) ? `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${p.hour||'00'}:${p.minute||'00'}` : null;
+const norm     = s => (s||'').toLowerCase().replace(/\s+/g,' ').trim();
 
-const getCurrentUserId = () => {
-  try { return JSON.parse(localStorage.getItem('user'))?.idu || null; } catch { return null; }
-};
+const COLORS = [
+  ['#dbeafe','#1d4ed8'],['#d1fae5','#065f46'],['#fce7f3','#9d174d'],
+  ['#ede9fe','#5b21b6'],['#ffedd5','#9a3412'],['#fef9c3','#854d0e'],
+];
+const pal  = n => COLORS[(n||' ').charCodeAt(0) % COLORS.length];
+const init = n => { const p=(n||'').trim().split(/\s+/).filter(Boolean); return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():(p[0]?.[0]||'?').toUpperCase(); };
 
-const normalize = s => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
-
+/* ═══════════════════════════════════════════════════════
+   COMPONENT
+   ═══════════════════════════════════════════════════════ */
 export default function GestionBureau() {
-  const [activeTab, setActiveTab] = useState('appels');
-  const [appels,    setAppels]    = useState([]);
-  const [presences, setPresences] = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
-  const [saving,    setSaving]    = useState(false);
+  const [tab,     setTab]     = useState('appels');
+  const [appels,  setAppels]  = useState([]);
+  const [pres,    setPres]    = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [panel,   setPanel]   = useState(null);   // null | 'appel' | 'presence'
+  const [saving,  setSaving]  = useState(false);
+  const [q,       setQ]       = useState('');
 
-  const [newAppel, setNewAppel] = useState({
-    callerName: '', callerLastname: '', phoneNumber: '', callReason: '', callDate: '',
-  });
-  const [newPresence, setNewPresence] = useState({
-    visitorName: '', visitorLastname: '', visitorCin: '', reason: '', arrivalTime: '',
-  });
+  const [fa, setFa] = useState({ callerName:'', callerLastname:'', phoneNumber:'', callReason:'' });
+  const [fp, setFp] = useState({ visitorName:'', visitorLastname:'', visitorCin:'', reason:'' });
+  const emptyDate = { day:'', month:'', year:'', hour:'', minute:'' };
+  const [faDate, setFaDate] = useState(emptyDate);
+  const [fpDate, setFpDate] = useState(emptyDate);
 
-  const [clients, setClients] = useState([]);
-  const [clientSuggestions, setClientSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [selectedPresenceClient, setSelectedPresenceClient] = useState(null);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
-  const inputRef = useRef(null);
-  const presenceInputRef = useRef(null);
+  const [clients, setClients]   = useState([]);
+  const [sugg,    setSugg]      = useState([]);
+  const [showS,   setShowS]     = useState(false);
+  const [selA,    setSelA]      = useState(null);
+  const [selP,    setSelP]      = useState(null);
+  const [dPos,    setDPos]      = useState({top:0,left:0,width:0});
+  const refA = useRef(null);
+  const refP = useRef(null);
 
+  /* load */
   const load = () => {
     setLoading(true);
-    Promise.all([
-      getPhoneCalls().catch(() => ({ data: [] })),
-      getPresenceJournals().catch(() => ({ data: [] })),
-    ]).then(([aRes, pRes]) => {
-      setAppels(aRes.data || []);
-      setPresences(pRes.data || []);
-    }).finally(() => setLoading(false));
+    Promise.all([getPhoneCalls().catch(()=>({data:[]})), getPresenceJournals().catch(()=>({data:[]}))])
+      .then(([a,p])=>{ setAppels(a.data||[]); setPres(p.data||[]); })
+      .finally(()=>setLoading(false));
+  };
+  useEffect(()=>{ load(); getUsersByRole('CLIENT').then(r=>setClients(r.data||[])).catch(()=>{}); },[]);
+
+  /* autocomplete */
+  const suggest = (val, ref, setForm) => {
+    setForm(prev=>({ ...prev, ...(panel==='appel'?{callerName:val}:{visitorName:val}) }));
+    if(panel==='appel') setSelA(null); else setSelP(null);
+    if(val.trim().length<2){ setSugg([]); setShowS(false); return; }
+    const lq=val.toLowerCase();
+    const m=clients.filter(c=>(c.prenom||'').toLowerCase().includes(lq)||(c.nom||'').toLowerCase().includes(lq)||(`${c.prenom} ${c.nom}`).toLowerCase().includes(lq)||(c.tel||'').includes(lq)||(c.CIN||c.cin||'').toLowerCase().includes(lq)).slice(0,6);
+    if(m.length&&ref.current){ const r=ref.current.getBoundingClientRect(); setDPos({top:r.bottom+window.scrollY+4,left:r.left+window.scrollX,width:r.width}); }
+    setSugg(m); setShowS(m.length>0);
   };
 
-  useEffect(() => {
-    load();
-    getUsersByRole('CLIENT').then(r => setClients(r.data || [])).catch(() => {});
-  }, []);
-
-  const handleCallerSearch = (value) => {
-    setNewAppel(prev => ({ ...prev, callerName: value }));
-    setSelectedClient(null);
-    if (value.trim().length < 2) { setClientSuggestions([]); setShowSuggestions(false); return; }
-    const q = value.toLowerCase();
-    const matches = clients.filter(c =>
-      (c.prenom || '').toLowerCase().includes(q) ||
-      (c.nom || '').toLowerCase().includes(q) ||
-      (`${c.prenom} ${c.nom}`).toLowerCase().includes(q) ||
-      (c.tel || '').includes(q)
-    );
-    if (matches.length > 0 && inputRef.current) {
-      const rect = inputRef.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: rect.width });
-    }
-    setClientSuggestions(matches.slice(0, 6));
-    setShowSuggestions(matches.length > 0);
+  const pick = c => {
+    if(panel==='appel'){ setFa(p=>({...p,callerName:c.prenom||'',callerLastname:c.nom||'',phoneNumber:c.tel||''})); setSelA(c); }
+    else { setFp(p=>({...p,visitorName:c.prenom||'',visitorLastname:c.nom||'',visitorCin:c.CIN||c.cin||''})); setSelP(c); }
+    setSugg([]); setShowS(false);
   };
 
-  const selectClient = (client) => {
-    setNewAppel(prev => ({
-      ...prev,
-      callerName:     client.prenom || '',
-      callerLastname: client.nom    || '',
-      phoneNumber:    client.tel    || '',
-    }));
-    setSelectedClient(client);
-    setClientSuggestions([]);
-    setShowSuggestions(false);
-  };
-
-  const handleAddAppel = async e => {
-    e.preventDefault();
-    setSaving(true);
+  /* submit */
+  const submitA = async e => {
+    e.preventDefault(); setSaving(true);
     try {
-      const userId = getCurrentUserId();
-      await createPhoneCall({
-        callerName:     newAppel.callerName,
-        callerLastname: newAppel.callerLastname,
-        phoneNumber:    newAppel.phoneNumber || null,
-        callReason:     newAppel.callReason,
-        callDate:       newAppel.callDate || null,
-        recordedBy:     userId ? { idu: userId } : null,
-      });
-      setNewAppel({ callerName: '', callerLastname: '', phoneNumber: '', callReason: '', callDate: '' });
-      setSelectedClient(null);
-      setShowModal(false);
-      load();
-    } catch { alert('Erreur lors de l\'enregistrement'); }
-    finally { setSaving(false); }
+      const id=uid();
+      await createPhoneCall({callerName:fa.callerName,callerLastname:fa.callerLastname,phoneNumber:fa.phoneNumber||null,callReason:fa.callReason,callDate:partsToISO(faDate),recordedBy:id?{idu:id}:null});
+      setFa({callerName:'',callerLastname:'',phoneNumber:'',callReason:''}); setFaDate(emptyDate); setSelA(null); closePanel(); load();
+    } catch { alert('Erreur'); } finally { setSaving(false); }
   };
-
-  const handleAddPresence = async e => {
-    e.preventDefault();
-    setSaving(true);
+  const submitP = async e => {
+    e.preventDefault(); setSaving(true);
     try {
-      const userId = getCurrentUserId();
-      await createPresenceJournal({
-        visitorName:     newPresence.visitorName,
-        visitorLastname: newPresence.visitorLastname,
-        visitorCin:      newPresence.visitorCin || null,
-        reason:          newPresence.reason,
-        arrivalTime:     newPresence.arrivalTime || null,
-        recordedById:    userId,
-      });
-      setNewPresence({ visitorName: '', visitorLastname: '', visitorCin: '', reason: '', arrivalTime: '' });
-      setSelectedPresenceClient(null);
-      setShowModal(false);
-      load();
-    } catch { alert('Erreur lors de l\'enregistrement'); }
-    finally { setSaving(false); }
+      const id=uid();
+      await createPresenceJournal({visitorName:fp.visitorName,visitorLastname:fp.visitorLastname,visitorCin:fp.visitorCin||null,reason:fp.reason,arrivalTime:partsToISO(fpDate),recordedById:id});
+      setFp({visitorName:'',visitorLastname:'',visitorCin:'',reason:''}); setFpDate(emptyDate); setSelP(null); closePanel(); load();
+    } catch { alert('Erreur'); } finally { setSaving(false); }
   };
 
-  const handleVisitorSearch = (value) => {
-    setNewPresence(prev => ({ ...prev, visitorName: value }));
-    setSelectedPresenceClient(null);
-    if (value.trim().length < 2) { setClientSuggestions([]); setShowSuggestions(false); return; }
-    const q = value.toLowerCase();
-    const matches = clients.filter(c =>
-      (c.prenom || '').toLowerCase().includes(q) ||
-      (c.nom || '').toLowerCase().includes(q) ||
-      (`${c.prenom} ${c.nom}`).toLowerCase().includes(q) ||
-      (c.tel || '').includes(q) ||
-      (c.CIN || c.cin || '').toLowerCase().includes(q)
-    );
-    if (matches.length > 0 && presenceInputRef.current) {
-      const rect = presenceInputRef.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: rect.width });
-    }
-    setClientSuggestions(matches.slice(0, 6));
-    setShowSuggestions(matches.length > 0);
-  };
+  /* delete */
+  const delA = async id => { if(!window.confirm('Supprimer ?')) return; await deletePhoneCall(id).catch(()=>{}); setAppels(p=>p.filter(x=>x.id!==id)); };
+  const delP = async id => { if(!window.confirm('Supprimer ?')) return; await deletePresenceJournal(id).catch(()=>{}); setPres(p=>p.filter(x=>x.id!==id)); };
 
-  const selectPresenceClient = (client) => {
-    setNewPresence(prev => ({
-      ...prev,
-      visitorName:     client.prenom || '',
-      visitorLastname: client.nom    || '',
-      visitorCin:      client.CIN || client.cin || '',
-    }));
-    setSelectedPresenceClient(client);
-    setClientSuggestions([]);
-    setShowSuggestions(false);
-  };
+  /* match */
+  const mA = a => { if(!a||!clients.length) return null; const ph=(a.phone_number||'').replace(/\s/g,''); const bp=ph&&clients.find(c=>c.tel&&c.tel.replace(/\s/g,'')===ph); if(bp) return bp; const fn=norm(a.caller_full_name); return clients.find(c=>[`${c.prenom} ${c.nom}`,`${c.nom} ${c.prenom}`].map(norm).includes(fn))||null; };
+  const mP = p => { if(!p||!clients.length) return null; if(p.visitorCin){ const bc=clients.find(c=>(c.CIN||c.cin)===p.visitorCin); if(bc) return bc; } const fn=norm(`${p.visitorLastname} ${p.visitorName}`); return clients.find(c=>[`${c.nom} ${c.prenom}`,`${c.prenom} ${c.nom}`].map(norm).includes(fn))||null; };
 
-  const findMatchingClient = (appel) => {
-    if (!appel || clients.length === 0) return null;
-    // 1. Match par téléphone (le plus fiable)
-    if (appel.phone_number) {
-      const phone = (appel.phone_number || '').replace(/\s/g, '');
-      const byPhone = clients.find(c => c.tel && c.tel.replace(/\s/g, '') === phone);
-      if (byPhone) return byPhone;
-    }
-    // 2. Match par nom complet
-    const fullName = normalize(appel.caller_full_name);
-    return clients.find(c => {
-      const n1 = normalize(`${c.prenom} ${c.nom}`);
-      const n2 = normalize(`${c.nom} ${c.prenom}`);
-      return fullName === n1 || fullName === n2;
-    }) || null;
-  };
+  const closePanel = () => { setPanel(null); setSelA(null); setSelP(null); setShowS(false); };
 
-  const findMatchingClientForPresence = (p) => {
-    if (!p || clients.length === 0) return null;
-    // 1. Match par CIN
-    if (p.visitorCin) {
-      const byCin = clients.find(c => (c.CIN || c.cin) === p.visitorCin);
-      if (byCin) return byCin;
-    }
-    // 2. Match par nom complet
-    const fullName = normalize(`${p.visitorLastname} ${p.visitorName}`);
-    return clients.find(c => {
-      const n1 = normalize(`${c.nom} ${c.prenom}`);
-      const n2 = normalize(`${c.prenom} ${c.nom}`);
-      return fullName === n1 || fullName === n2;
-    }) || null;
-  };
+  /* filtered */
+  const lq = q.toLowerCase();
+  const fA = appels.filter(a=>!lq||(a.caller_full_name||'').toLowerCase().includes(lq)||(a.phone_number||'').includes(lq)||(a.call_reason||'').toLowerCase().includes(lq));
+  const fP = pres.filter(p=>!lq||(`${p.visitorLastname} ${p.visitorName}`).toLowerCase().includes(lq)||(p.visitorCin||'').toLowerCase().includes(lq)||(p.reason||'').toLowerCase().includes(lq));
 
-  const handleDeleteAppel = async id => {
-    if (!window.confirm('Supprimer cet appel ?')) return;
-    await deletePhoneCall(id).catch(() => alert('Erreur'));
-    setAppels(prev => prev.filter(a => a.id !== id));
-  };
+  const kpis = [
+    { label:'Appels total',         val:appels.length,                                    icon:<Phone size={18}/>,       color:'blue'   },
+    { label:"Aujourd'hui",          val:appels.filter(a=>isToday(a.call_date)).length,    icon:<TrendingUp size={18}/>,   color:'sky'    },
+    { label:'Présences total',      val:pres.length,                                      icon:<DoorOpen size={18}/>,    color:'violet' },
+    { label:"Présences auj.",        val:pres.filter(p=>isToday(p.arrivalTime)).length,   icon:<CalendarDays size={18}/>, color:'fuchsia'},
+    { label:'Clients reconnus',     val:[...appels.filter(mA),...pres.filter(mP)].length, icon:<Users size={18}/>,       color:'emerald'},
+  ];
 
-  const handleDeletePresence = async id => {
-    if (!window.confirm('Supprimer cette présence ?')) return;
-    await deletePresenceJournal(id).catch(() => alert('Erreur'));
-    setPresences(prev => prev.filter(p => p.id !== id));
-  };
-
+  /* ── RENDER ─────────────────────────────────────── */
   return (
-    <>
-      <div className="page-header">
-        <h1 className="page-title"><i className="fas fa-building"></i> Gestion du Bureau</h1>
-        <p className="page-description">Gérez les journaux administratifs du cabinet</p>
-      </div>
+    <div className="gb">
 
-      {/* Tabs */}
-      <div className="tabs-navigation">
-        <button className={`tab-btn ${activeTab === 'appels' ? 'active' : ''}`} onClick={() => setActiveTab('appels')}>
-          <i className="fas fa-phone"></i>
-          <span>Journal d'Appels</span>
-          <span className="tab-badge">{appels.length}</span>
-        </button>
-        <button className={`tab-btn ${activeTab === 'presence' ? 'active' : ''}`} onClick={() => setActiveTab('presence')}>
-          <i className="fas fa-door-open"></i>
-          <span>Journal de Présence</span>
-          <span className="tab-badge">{presences.length}</span>
-        </button>
-      </div>
+      {/* ═══ HERO ═════════════════════════════════════ */}
+      <div className="gb-hero">
+        <div className="gb-hero-glow"/>
+        <div className="gb-hero-top">
+          <div className="gb-hero-badge"><Sparkles size={11}/> Bureau administratif</div>
+          <h1 className="gb-hero-h1">Gestion du Bureau</h1>
+          <p className="gb-hero-p">Centralisez et suivez chaque interaction du cabinet — appels entrants et présences des visiteurs.</p>
+        </div>
+        <div className="gb-hero-btns">
+          <button className="gb-btn-outline" onClick={()=>setPanel('appel')}>
+            <Phone size={14}/> Enregistrer un appel
+          </button>
+          <button className="gb-btn-solid" onClick={()=>setPanel('presence')}>
+            <Plus size={14}/> Enregistrer une présence
+          </button>
+        </div>
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#9aa3b4' }}><i className="fas fa-spinner fa-spin"></i></div>
-      ) : (
-        <>
-          {/* APPELS */}
-          {activeTab === 'appels' && (
-            <>
-              <div className="section-header">
-                <h2><i className="fas fa-phone"></i> Journal d'Appels</h2>
-                <button className="btn-add" onClick={() => { setModalType('appel'); setShowModal(true); }}>
-                  <i className="fas fa-plus"></i> Enregistrer un appel
-                </button>
-              </div>
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Nom</th>
-                      <th>Téléphone</th>
-                      <th>Date &amp; Heure</th>
-                      <th>Motif</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {appels.length === 0 ? (
-                      <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#9aa3b4' }}>Aucun appel enregistré</td></tr>
-                    ) : appels.map(a => {
-                      const matchedClient = findMatchingClient(a);
-                      return (
-                      <tr key={a.id}>
-                        <td>
-                          <strong>{a.caller_full_name || '—'}</strong>
-                          {matchedClient && (
-                            <span style={{
-                              marginLeft: 8, fontSize: '0.72rem', background: '#dbeafe', color: '#1d4ed8',
-                              borderRadius: 10, padding: '2px 8px', fontWeight: 600, whiteSpace: 'nowrap',
-                            }}>
-                              <i className="fas fa-user-check" style={{ marginRight: 4 }}></i>Client
-                            </span>
-                          )}
-                        </td>
-                        <td>{a.phone_number || '—'}</td>
-                        <td>{fmtDT(a.call_date)}</td>
-                        <td>{a.call_reason || '—'}</td>
-                        <td>
-                          <button onClick={() => handleDeleteAppel(a.id)}
-                            style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, padding: '0.25rem 0.5rem', cursor: 'pointer' }}>
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {/* PRÉSENCE */}
-          {activeTab === 'presence' && (
-            <>
-              <div className="section-header">
-                <h2><i className="fas fa-door-open"></i> Journal de Présence</h2>
-                <button className="btn-add" onClick={() => { setModalType('presence'); setShowModal(true); }}>
-                  <i className="fas fa-plus"></i> Enregistrer une présence
-                </button>
-              </div>
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Nom</th>
-                      <th>CIN</th>
-                      <th>Date &amp; Heure</th>
-                      <th>Motif</th>
-                      <th>Enregistré par</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {presences.length === 0 ? (
-                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#9aa3b4' }}>Aucune présence enregistrée</td></tr>
-                    ) : presences.map(p => {
-                      const matchedPresenceClient = findMatchingClientForPresence(p);
-                      return (
-                      <tr key={p.id}>
-                        <td>
-                          <strong>{[p.visitorLastname, p.visitorName].filter(Boolean).join(' ') || '—'}</strong>
-                          {matchedPresenceClient && (
-                            <span style={{
-                              marginLeft: 8, fontSize: '0.72rem', background: '#dbeafe', color: '#1d4ed8',
-                              borderRadius: 10, padding: '2px 8px', fontWeight: 600, whiteSpace: 'nowrap',
-                            }}>
-                              <i className="fas fa-user-check" style={{ marginRight: 4 }}></i>Client
-                            </span>
-                          )}
-                        </td>
-                        <td>{p.visitorCin || '—'}</td>
-                        <td>{fmtDT(p.arrivalTime)}</td>
-                        <td>{p.reason || '—'}</td>
-                        <td>{p.recordedByName || '—'}</td>
-                        <td>
-                          <button onClick={() => handleDeletePresence(p.id)}
-                            style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, padding: '0.25rem 0.5rem', cursor: 'pointer' }}>
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </>
-      )}
-
-      {/* MODALS */}
-      {showSuggestions && clientSuggestions.length > 0 && createPortal(
-        <div style={{
-          position: 'absolute', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width,
-          zIndex: 9999, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)', maxHeight: 220, overflowY: 'auto',
-        }}>
-          {clientSuggestions.map(c => (
-            <div key={c.idu} onMouseDown={() => modalType === 'presence' ? selectPresenceClient(c) : selectClient(c)}
-              style={{ padding: '0.65rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9',
-                display: 'flex', alignItems: 'center', gap: 10 }}
-              onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
-              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-            >
-              <i className="fas fa-user" style={{ color: '#3b82f6', fontSize: '0.85rem' }}></i>
+        {/* KPI strip */}
+        <div className="gb-kpis">
+          {kpis.map((k,i)=>(
+            <div key={i} className={`gb-kpi gb-kpi-${k.color}`}>
+              <div className="gb-kpi-ic">{k.icon}</div>
               <div>
-                <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1e293b' }}>{c.prenom} {c.nom}</div>
-                <div style={{ fontSize: '0.76rem', color: '#64748b', display: 'flex', gap: 8 }}>
-                  {c.tel && <span><i className="fas fa-phone" style={{ marginRight: 3 }}></i>{c.tel}</span>}
-                  {(c.CIN || c.cin) && <span><i className="fas fa-id-card" style={{ marginRight: 3 }}></i>{c.CIN || c.cin}</span>}
+                <div className="gb-kpi-n">{k.val}</div>
+                <div className="gb-kpi-l">{k.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ═══ TOOLBAR ══════════════════════════════════ */}
+      <div className="gb-bar">
+        <div className="gb-tabs">
+          <button className={`gb-t${tab==='appels'?' a':''}`} onClick={()=>{setTab('appels');setQ('');}}>
+            <span className={`gb-t-dot blue`}/>
+            Journal d'Appels
+            <span className="gb-t-n">{appels.length}</span>
+          </button>
+          <button className={`gb-t${tab==='presence'?' a':''}`} onClick={()=>{setTab('presence');setQ('');}}>
+            <span className={`gb-t-dot violet`}/>
+            Journal de Présence
+            <span className="gb-t-n">{pres.length}</span>
+          </button>
+        </div>
+        <div className="gb-search">
+          <Search size={14}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher…"/>
+          {q && <button onClick={()=>setQ('')}><X size={12}/></button>}
+        </div>
+      </div>
+
+      {/* ═══ CONTENT ══════════════════════════════════ */}
+      {loading ? (
+        <div className="gb-load"><span className="gb-ring"/><span>Chargement…</span></div>
+      ) : (
+        <div className="gb-feed">
+          {(tab==='appels' ? fA : fP).length === 0 ? (
+            <div className="gb-void">
+              <div className="gb-void-ic">{tab==='appels'?<Phone size={26}/>:<DoorOpen size={26}/>}</div>
+              <strong>{q?'Aucun résultat':`Aucun ${tab==='appels'?'appel':'présence'} enregistré`}</strong>
+              <span>{q?'Essayez un autre terme':`Cliquez sur le bouton en haut pour commencer`}</span>
+            </div>
+          ) : tab === 'appels' ? fA.map(a => {
+            const client = mA(a);
+            const name   = a.caller_full_name || '—';
+            const [bg,fg]= pal(name);
+            return (
+              <div key={a.id} className="gb-card gb-card-blue">
+                <div className="gb-card-stripe blue"/>
+                <div className="gb-card-av" style={{background:bg,color:fg}}>{init(name)}</div>
+                <div className="gb-card-body">
+                  <div className="gb-card-top">
+                    <div className="gb-card-name">{name}</div>
+                    {client && <span className="gb-badge-ok"><CheckCircle2 size={10}/> Client</span>}
+                    {a.phone_number && <span className="gb-badge-phone"><Phone size={10}/> {a.phone_number}</span>}
+                  </div>
+                  <p className="gb-card-text">{a.call_reason || <em>Aucun motif renseigné</em>}</p>
+                </div>
+                <div className="gb-card-side">
+                  <div className="gb-card-date">{fmtDate(a.call_date)}</div>
+                  <div className="gb-card-time"><Clock size={10}/>{fmtTime(a.call_date)}</div>
+                  <button className="gb-card-del" onClick={()=>delA(a.id)}><Trash2 size={13}/></button>
                 </div>
               </div>
+            );
+          }) : fP.map(p => {
+            const client = mP(p);
+            const name   = [p.visitorLastname,p.visitorName].filter(Boolean).join(' ')||'—';
+            const [bg,fg]= pal(name);
+            return (
+              <div key={p.id} className="gb-card gb-card-violet">
+                <div className="gb-card-stripe violet"/>
+                <div className="gb-card-av" style={{background:bg,color:fg}}>{init(name)}</div>
+                <div className="gb-card-body">
+                  <div className="gb-card-top">
+                    <div className="gb-card-name">{name}</div>
+                    {client && <span className="gb-badge-ok"><CheckCircle2 size={10}/> Client</span>}
+                    {p.visitorCin && <span className="gb-badge-cin"><CreditCard size={10}/> {p.visitorCin}</span>}
+                    {p.recordedByName && <span className="gb-badge-by">par {p.recordedByName}</span>}
+                  </div>
+                  <p className="gb-card-text">{p.reason || <em>Aucun motif renseigné</em>}</p>
+                </div>
+                <div className="gb-card-side">
+                  <div className="gb-card-date">{fmtDate(p.arrivalTime)}</div>
+                  <div className="gb-card-time"><Clock size={10}/>{fmtTime(p.arrivalTime)}</div>
+                  <button className="gb-card-del" onClick={()=>delP(p.id)}><Trash2 size={13}/></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ═══ AUTOCOMPLETE ═════════════════════════════ */}
+      {showS && sugg.length>0 && createPortal(
+        <div className="gb-drop" style={{top:dPos.top,left:dPos.left,width:dPos.width}}>
+          {sugg.map(c=>(
+            <div key={c.idu} className="gb-drop-row" onMouseDown={()=>pick(c)}>
+              <div className="gb-drop-av">{init(`${c.prenom} ${c.nom}`)}</div>
+              <div className="gb-drop-info">
+                <b>{c.prenom} {c.nom}</b>
+                <span>
+                  {c.tel&&<><PhoneCall size={9}/> {c.tel} </>}
+                  {(c.CIN||c.cin)&&<><CreditCard size={9}/> {c.CIN||c.cin}</>}
+                </span>
+              </div>
+              <span className="gb-drop-badge">Client</span>
             </div>
           ))}
         </div>,
         document.body
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => { setShowModal(false); setSelectedClient(null); setSelectedPresenceClient(null); setShowSuggestions(false); }}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+      {/* ═══ SIDE PANEL ═══════════════════════════════ */}
+      {panel && <>
+        <div className="gb-scrim" onClick={closePanel}/>
+        <div className={`gb-panel gb-panel-${panel==='appel'?'blue':'violet'}`}>
 
-            {modalType === 'appel' && (
-              <>
-                <div className="modal-header">
-                  <h2><i className="fas fa-phone"></i> Enregistrer un appel</h2>
-                  <button className="btn-close" onClick={() => setShowModal(false)}><i className="fas fa-times"></i></button>
-                </div>
-                <form onSubmit={handleAddAppel}>
-                  <div className="modal-body">
-                    <div className="form-group">
-                      <label>Prénom *
-                        {selectedClient && (
-                          <span style={{ marginLeft: 8, fontSize: '0.75rem', background: '#dbeafe', color: '#1d4ed8', borderRadius: 4, padding: '2px 7px' }}>
-                            <i className="fas fa-user-check" style={{ marginRight: 4 }}></i>Client existant
-                          </span>
-                        )}
-                      </label>
-                      <input ref={inputRef} type="text" required value={newAppel.callerName}
-                        onChange={e => handleCallerSearch(e.target.value)}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                        placeholder="Rechercher un client ou saisir..."
-                        autoComplete="off" />
-                    </div>
-                    <div className="form-group">
-                      <label>Nom *</label>
-                      <input type="text" required value={newAppel.callerLastname}
-                        onChange={e => setNewAppel({ ...newAppel, callerLastname: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Téléphone</label>
-                      <input type="text" value={newAppel.phoneNumber}
-                        onChange={e => setNewAppel({ ...newAppel, phoneNumber: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Date et heure</label>
-                      <input type="datetime-local" value={newAppel.callDate}
-                        onChange={e => setNewAppel({ ...newAppel, callDate: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Motif *</label>
-                      <textarea required rows="3" value={newAppel.callReason}
-                        onChange={e => setNewAppel({ ...newAppel, callReason: e.target.value })}></textarea>
-                    </div>
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Annuler</button>
-                    <button type="submit" className="btn btn-primary" disabled={saving}>
-                      {saving ? 'Enregistrement...' : 'Enregistrer'}
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
-
-            {modalType === 'presence' && (
-              <>
-                <div className="modal-header">
-                  <h2><i className="fas fa-door-open"></i> Enregistrer une présence</h2>
-                  <button className="btn-close" onClick={() => setShowModal(false)}><i className="fas fa-times"></i></button>
-                </div>
-                <form onSubmit={handleAddPresence}>
-                  <div className="modal-body">
-                    <div className="form-group">
-                      <label>Prénom *
-                        {selectedPresenceClient && (
-                          <span style={{ marginLeft: 8, fontSize: '0.75rem', background: '#dbeafe', color: '#1d4ed8', borderRadius: 4, padding: '2px 7px' }}>
-                            <i className="fas fa-user-check" style={{ marginRight: 4 }}></i>Client existant
-                          </span>
-                        )}
-                      </label>
-                      <input ref={presenceInputRef} type="text" required value={newPresence.visitorName}
-                        onChange={e => handleVisitorSearch(e.target.value)}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                        placeholder="Rechercher un client ou saisir..."
-                        autoComplete="off" />
-                    </div>
-                    <div className="form-group">
-                      <label>Nom *</label>
-                      <input type="text" required value={newPresence.visitorLastname}
-                        onChange={e => setNewPresence({ ...newPresence, visitorLastname: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>CIN</label>
-                      <input type="text" value={newPresence.visitorCin}
-                        onChange={e => setNewPresence({ ...newPresence, visitorCin: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Date et heure</label>
-                      <input type="datetime-local" value={newPresence.arrivalTime}
-                        onChange={e => setNewPresence({ ...newPresence, arrivalTime: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Motif de la visite *</label>
-                      <textarea required rows="3" value={newPresence.reason}
-                        onChange={e => setNewPresence({ ...newPresence, reason: e.target.value })}></textarea>
-                    </div>
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Annuler</button>
-                    <button type="submit" className="btn btn-primary" disabled={saving}>
-                      {saving ? 'Enregistrement...' : 'Enregistrer'}
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
+          {/* ── Panel Header ── */}
+          <div className="gb-ph">
+            <div className={`gb-ph-icon gb-ph-icon-${panel==='appel'?'blue':'violet'}`}>
+              {panel==='appel'?<Phone size={16}/>:<DoorOpen size={16}/>}
+            </div>
+            <div className="gb-ph-text">
+              <h2>{panel==='appel'?'Enregistrer un appel':'Enregistrer une présence'}</h2>
+              <p>{panel==='appel'?'Journalisez un appel téléphonique reçu au cabinet':'Notez l\'arrivée d\'un visiteur au cabinet'}</p>
+            </div>
+            <button className="gb-ph-close" onClick={closePanel}><X size={14}/></button>
           </div>
+
+          {/* ── Form ── */}
+          <form className="gb-panel-form" onSubmit={panel==='appel'?submitA:submitP}>
+            <div className="gb-panel-body">
+
+              {/* ── Section: Identité ── */}
+              <p className="gb-sec-lbl">Identité</p>
+              <div className="gb-row2">
+                <div className="gb-f">
+                  <label>
+                    Prénom <span className="gb-req">*</span>
+                    {(selA||selP) && <span className="gb-ok-pill"><UserCheck size={9}/> Connu</span>}
+                  </label>
+                  <input
+                    ref={panel==='appel'?refA:refP}
+                    type="text" required
+                    placeholder="Prénom…"
+                    autoComplete="off"
+                    value={panel==='appel'?fa.callerName:fp.visitorName}
+                    onChange={e=>suggest(e.target.value,panel==='appel'?refA:refP,panel==='appel'?setFa:setFp)}
+                    onBlur={()=>setTimeout(()=>setShowS(false),160)}
+                  />
+                </div>
+                <div className="gb-f">
+                  <label>Nom <span className="gb-req">*</span></label>
+                  <input type="text" required placeholder="Nom…"
+                    value={panel==='appel'?fa.callerLastname:fp.visitorLastname}
+                    onChange={e=>panel==='appel'?setFa(p=>({...p,callerLastname:e.target.value})):setFp(p=>({...p,visitorLastname:e.target.value}))}
+                  />
+                </div>
+              </div>
+
+              {/* ── Section: Contact ── */}
+              <p className="gb-sec-lbl">{panel==='appel'?'Contact & date':'Visite & date'}</p>
+              <div className="gb-f">
+                <label>{panel==='appel'?'Numéro de téléphone':'Numéro CIN'}</label>
+                <input type="text"
+                  placeholder={panel==='appel'?'+212 6XX XXX XXX':'AA123456'}
+                  value={panel==='appel'?fa.phoneNumber:fp.visitorCin}
+                  onChange={e=>panel==='appel'?setFa(p=>({...p,phoneNumber:e.target.value})):setFp(p=>({...p,visitorCin:e.target.value}))}
+                />
+              </div>
+
+              <div className="gb-f">
+                <label>Date</label>
+                <div className="gb-date-row">
+                  <select value={panel==='appel'?faDate.day:fpDate.day} onChange={e=>panel==='appel'?setFaDate(d=>({...d,day:e.target.value})):setFpDate(d=>({...d,day:e.target.value}))}>
+                    <option value="">Jour</option>
+                    {Array.from({length:31},(_,i)=>i+1).map(d=><option key={d} value={d}>{String(d).padStart(2,'0')}</option>)}
+                  </select>
+                  <select value={panel==='appel'?faDate.month:fpDate.month} onChange={e=>panel==='appel'?setFaDate(d=>({...d,month:e.target.value})):setFpDate(d=>({...d,month:e.target.value}))}>
+                    <option value="">Mois</option>
+                    {['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'].map((m,i)=><option key={i+1} value={i+1}>{m}</option>)}
+                  </select>
+                  <select value={panel==='appel'?faDate.year:fpDate.year} onChange={e=>panel==='appel'?setFaDate(d=>({...d,year:e.target.value})):setFpDate(d=>({...d,year:e.target.value}))}>
+                    <option value="">Année</option>
+                    {[2024,2025,2026,2027].map(y=><option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="gb-f">
+                <label>Heure</label>
+                <div className="gb-time-row">
+                  <select value={panel==='appel'?faDate.hour:fpDate.hour} onChange={e=>panel==='appel'?setFaDate(d=>({...d,hour:e.target.value})):setFpDate(d=>({...d,hour:e.target.value}))}>
+                    <option value="">HH</option>
+                    {Array.from({length:24},(_,i)=>String(i).padStart(2,'0')).map(h=><option key={h} value={h}>{h}h</option>)}
+                  </select>
+                  <span className="gb-time-sep">:</span>
+                  <select value={panel==='appel'?faDate.minute:fpDate.minute} onChange={e=>panel==='appel'?setFaDate(d=>({...d,minute:e.target.value})):setFpDate(d=>({...d,minute:e.target.value}))}>
+                    <option value="">Minutes</option>
+                    {['00','05','10','15','20','25','30','35','40','45','50','55'].map(m=><option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* ── Section: Motif ── */}
+              <p className="gb-sec-lbl">Motif</p>
+              <div className="gb-f">
+                <label>Description <span className="gb-req">*</span></label>
+                <textarea required rows={4}
+                  placeholder={panel==='appel'?'Objet de l\'appel téléphonique…':'Raison de la visite au cabinet…'}
+                  value={panel==='appel'?fa.callReason:fp.reason}
+                  onChange={e=>panel==='appel'?setFa(p=>({...p,callReason:e.target.value})):setFp(p=>({...p,reason:e.target.value}))}
+                />
+              </div>
+
+            </div>
+
+            {/* ── Footer ── */}
+            <div className="gb-panel-ft">
+              <span className="gb-ft-hint"><span className="gb-req">*</span> Champs obligatoires</span>
+              <div className="gb-ft-btns">
+                <button type="button" className="gb-cancel" onClick={closePanel}>Annuler</button>
+                <button type="submit" className={`gb-save gb-save-${panel==='appel'?'blue':'violet'}`} disabled={saving}>
+                  {saving ? <><span className="gb-ring sm"/> Enregistrement…</> : <><CheckCircle2 size={14}/> Enregistrer</>}
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
-      )}
-    </>
+      </>}
+    </div>
   );
 }

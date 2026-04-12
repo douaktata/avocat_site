@@ -1,524 +1,271 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Plus, X, Calendar, Clock, User, MapPin, Tag, Trash2 } from 'lucide-react';
 import { getAppointments, getTrials, getAudiences, createAppointment, deleteAppointment, deleteTrial, deleteAudience, getUsersByRole } from '../api';
-import '../avocate/Calendrier.css';
+import './CalendrierSecretaire.css';
 
-const toDateTime = (iso) => iso ? iso.replace('T', ' ').substring(0, 19) : '';
+const pad = (n) => String(n).padStart(2, '0');
+const toDateStr = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const toDateTime = (iso) => iso ? iso.replace('T',' ').substring(0,16) : '';
 
-const CalendrierSecretaire = () => {
-  const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [viewMode, setViewMode] = useState('week');
-  const [activeTab, setActiveTab] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [allEvents, setAllEvents] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [newAppt, setNewAppt] = useState({ date: '', heure: '09:00', clientId: '', reason: '' });
-  const [saving, setSaving] = useState(false);
+const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const DAYS_FR   = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const DAYS_FULL = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+
+function fmtTime(str) {
+  if (!str) return '';
+  const parts = str.split(' ');
+  return parts[1] ? parts[1].substring(0,5) : '';
+}
+
+function fmtDateLong(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${DAYS_FULL[d.getDay()]} ${d.getDate()} ${MONTHS_FR[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function isToday(dateStr) {
+  return dateStr === toDateStr(new Date());
+}
+
+function categoryLabel(cat) {
+  if (cat === 'appointment') return 'Rendez-vous';
+  if (cat === 'hearing')     return 'Audience';
+  if (cat === 'postponed')   return 'Reporté';
+  return cat;
+}
+
+export default function CalendrierSecretaire() {
+  const [view, setView]               = useState('agenda'); // 'agenda' | 'month'
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [allEvents, setAllEvents]     = useState([]);
+  const [clients, setClients]         = useState([]);
+  const [selected, setSelected]       = useState(null);   // event detail modal
+  const [showNew, setShowNew]         = useState(false);
+  const [filter, setFilter]           = useState('all');  // 'all' | 'appointment' | 'hearing'
+  const today = toDateStr(new Date());
+  const [form, setForm]               = useState({ date: today, heure: '09:00', clientId: '', reason: '' });
+  const [saving, setSaving]           = useState(false);
 
   useEffect(() => {
-    getUsersByRole('CLIENT').then(res => setClients(res.data)).catch(() => {});
+    getUsersByRole('CLIENT').then(r => setClients(r.data)).catch(() => {});
   }, []);
 
-  const loadEvents = useCallback(() => {
+  const load = useCallback(() => {
     Promise.all([getAppointments(), getTrials(), getAudiences()])
-      .then(([apptRes, trialRes, audRes]) => {
-        const appts = apptRes.data
-          .filter(a => a.appointmentDate)
-          .map(a => ({
-            id: a.ida,
-            date_time: toDateTime(a.appointmentDate),
-            duration: 60,
-            client_first_name: a.user?.nom || 'Client',
-            client_last_name: a.user?.prenom || '',
-            event_type: a.reason || 'Consultation',
-            event_category: 'appointment',
-          }));
-        const trials = trialRes.data
-          .filter(t => t.hearing_date)
-          .map(t => ({
-            id: `t_${t.idt}`,
-            date_time: toDateTime(t.hearing_date),
-            duration: 90,
-            client_first_name: t.case_number || '—',
-            client_last_name: t.location ? `· ${t.location}` : '',
-            event_type: 'Audience (Tribunal)',
-            event_category: 'hearing',
-          }));
-        const HEARING_TYPE_LABEL = { CONSULTATION: 'Consultation', HEARING: 'Audience', APPEL: 'Appel', MEDIATION: 'Médiation', AUTRE: 'Autre' };
-        const audiences = (audRes.data || [])
-          .filter(a => a.hearingDate && a.status !== 'CANCELLED')
-          .map(a => ({
-            id: `a_${a.id}`,
-            date_time: toDateTime(a.hearingDate),
-            duration: 90,
-            client_first_name: a.caseNumber || '—',
-            client_last_name: a.clientFullName ? `· ${a.clientFullName}` : '',
-            event_type: (HEARING_TYPE_LABEL[a.hearingType] || a.hearingType || 'Audience'),
-            event_category: a.status === 'POSTPONED' ? 'postponed' : 'hearing',
-          }));
-        setAllEvents([...appts, ...trials, ...audiences].sort((a, b) => a.date_time.localeCompare(b.date_time)));
-      })
-      .catch(() => {});
+      .then(([a, t, au]) => {
+        const appts = a.data.filter(x => x.appointmentDate).map(x => ({
+          id: x.ida, rawId: x.ida, type: 'appointment',
+          dt: toDateTime(x.appointmentDate),
+          title: x.reason || 'Consultation',
+          client: x.user ? `${x.user.prenom || ''} ${x.user.nom || ''}`.trim() : (x.clientName || '—'),
+          status: x.status || 'PENDING',
+          location: '',
+        }));
+        const trials = t.data.filter(x => x.hearing_date).map(x => ({
+          id: `t_${x.idt}`, rawId: x.idt, type: 'hearing',
+          dt: toDateTime(x.hearing_date),
+          title: 'Audience (Tribunal)',
+          client: x.case_number || '—',
+          status: 'CONFIRMED',
+          location: x.location || '',
+        }));
+        const LABEL = { CONSULTATION:'Consultation', HEARING:'Audience', APPEL:'Appel', MEDIATION:'Médiation', AUTRE:'Autre' };
+        const auds = (au.data || []).filter(x => x.hearingDate && x.status !== 'CANCELLED').map(x => ({
+          id: `a_${x.id}`, rawId: x.id, type: x.status === 'POSTPONED' ? 'postponed' : 'hearing',
+          dt: toDateTime(x.hearingDate),
+          title: LABEL[x.hearingType] || x.hearingType || 'Audience',
+          client: x.clientFullName || x.caseNumber || '—',
+          status: x.status || 'CONFIRMED',
+          location: x.location || '',
+        }));
+        setAllEvents([...appts, ...trials, ...auds].sort((a,b) => a.dt.localeCompare(b.dt)));
+      }).catch(() => {});
   }, []);
 
-  useEffect(() => { loadEvents(); }, [loadEvents]);
+  useEffect(() => { load(); }, [load]);
 
-  const getWeekStart = useCallback((date) => {
-    const d = new Date(date);
-    d.setDate(d.getDate() - d.getDay());
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
+  // ── Filtered events ──
+  const filtered = useMemo(() => {
+    if (filter === 'all') return allEvents;
+    if (filter === 'hearing') return allEvents.filter(e => e.type === 'hearing' || e.type === 'postponed');
+    return allEvents.filter(e => e.type === filter);
+  }, [allEvents, filter]);
 
-  const currentWeekStart = useMemo(() => getWeekStart(currentDate), [currentDate, getWeekStart]);
-
-  const events = useMemo(() => {
-    const weekEnd = new Date(currentWeekStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    const startStr = currentWeekStart.toISOString().split('T')[0];
-    const endStr = weekEnd.toISOString().split('T')[0];
-    return allEvents.filter(e => {
-      const d = e.date_time.split(' ')[0];
-      return d >= startStr && d < endStr;
-    });
-  }, [allEvents, currentWeekStart]);
-
-  const filteredEvents = useMemo(() => {
-    let filtered = events;
-    if (activeTab !== 'all') filtered = filtered.filter(e =>
-      activeTab === 'hearing'
-        ? e.event_category === 'hearing' || e.event_category === 'postponed'
-        : e.event_category === activeTab
-    );
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(e =>
-        e.event_type.toLowerCase().includes(q) ||
-        e.client_first_name.toLowerCase().includes(q) ||
-        e.client_last_name.toLowerCase().includes(q)
-      );
-    }
-    return filtered;
-  }, [events, activeTab, searchQuery]);
-
-  const timeSlots = [
-    '08:00', '09:00', '10:00', '11:00',
-    '12:00', '13:00', '14:00', '15:00',
-    '16:00', '17:00', '18:00',
-  ];
-
-  const formatTimeLabel = (t) => {
-    const h = parseInt(t.split(':')[0]);
-    if (h === 0)  return '12:00 AM';
-    if (h < 12)   return `${h}:00 AM`;
-    if (h === 12) return '12:00 PM';
-    return `${h - 12}:00 PM`;
-  };
-
-  const isSameDay = (d1, d2) =>
-    d1.getDate() === d2.getDate() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getFullYear() === d2.getFullYear();
-
-  const getDaysOfWeek = useCallback(() => {
-    const dayNames = ['DIM', 'LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM'];
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(currentWeekStart);
-      date.setDate(date.getDate() + i);
-      return {
-        name: dayNames[i],
-        date: date.getDate(),
-        fullDate: date,
-        dateStr: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
-        isToday: isSameDay(date, new Date()),
-      };
-    });
-  }, [currentWeekStart]);
-
-  const getEventsForDayAndTime = (dateStr, hour) =>
-    filteredEvents.filter(event => {
-      const eventDate = event.date_time.split(' ')[0];
-      const eventHour = parseInt(event.date_time.split(' ')[1].split(':')[0]);
-      return eventDate === dateStr && eventHour === hour;
-    });
-
-  const navigate = (direction) => {
-    const newDate = new Date(currentDate);
-    if (viewMode === 'day')        newDate.setDate(newDate.getDate() + direction);
-    else if (viewMode === 'week')  newDate.setDate(newDate.getDate() + direction * 7);
-    else                           newDate.setMonth(newDate.getMonth() + direction);
-    setCurrentDate(newDate);
-  };
-
-  const formatWeekRange = () => {
-    const start = new Date(currentWeekStart);
-    const end = new Date(currentWeekStart);
-    end.setDate(end.getDate() + 6);
-    const opts = { day: 'numeric', month: 'short' };
-    return `${start.toLocaleDateString('fr-FR', opts)} — ${end.toLocaleDateString('fr-FR', opts)} ${end.getFullYear()}`;
-  };
-
-  const formatEventRange = (dateTime, duration) => {
-    const startH = parseInt(dateTime.split(' ')[1].split(':')[0]);
-    const startM = parseInt(dateTime.split(' ')[1].split(':')[1]);
-    const endTotalM = startH * 60 + startM + duration;
-    const endH = Math.floor(endTotalM / 60);
-    const endM = endTotalM % 60;
-    const fmt = (h, m) => {
-      const period = h >= 12 ? 'PM' : 'AM';
-      const dh = h > 12 ? h - 12 : (h === 0 ? 12 : h);
-      return `${dh}:${String(m).padStart(2, '0')} ${period}`;
-    };
-    return `${fmt(startH, startM)} - ${fmt(endH, endM)}`;
-  };
-
-  const handleDelete = (eventId) => {
-    if (!window.confirm('Supprimer ce rendez-vous ?')) return;
-    deleteAppointment(eventId)
-      .then(() => loadEvents())
-      .catch(() => alert('Erreur lors de la suppression'));
-  };
-
-  const handleDeleteHearing = (eventId) => {
-    if (!window.confirm('Supprimer cette audience ?')) return;
-    const idStr = String(eventId);
-    if (idStr.startsWith('a_')) {
-      deleteAudience(idStr.replace('a_', ''))
-        .then(() => loadEvents())
-        .catch(() => alert('Erreur lors de la suppression'));
-    } else {
-      deleteTrial(idStr.replace('t_', ''))
-        .then(() => loadEvents())
-        .catch(() => alert('Erreur lors de la suppression'));
-    }
-  };
-
-  const getCategoryIcon = (category) => {
-    if (category === 'appointment') return '📋';
-    if (category === 'hearing')     return '⚖️';
-    if (category === 'postponed')   return '🔄';
-    return '📅';
-  };
-
-  const getDayViewDate = () => {
-    const d = currentDate;
-    return {
-      name: d.toLocaleDateString('fr-FR', { weekday: 'long' }),
-      date: d.getDate(),
-      fullDate: d,
-      dateStr: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-      isToday: isSameDay(d, new Date()),
-    };
-  };
-
-  const getMonthDays = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+  // ── Agenda: full week (Mon–Sun) of currentDate ──
+  const agendaDays = useMemo(() => {
+    const d = new Date(currentDate);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day; // start on Monday
+    d.setDate(d.getDate() + diff);
     const days = [];
-    for (let i = 0; i < firstDay.getDay(); i++) days.push(null);
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      const date = new Date(year, month, day);
-      days.push({
-        date: day,
-        fullDate: date,
-        dateStr: `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-        isToday: isSameDay(date, new Date()),
-      });
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(d);
+      date.setDate(d.getDate() + i);
+      const ds = toDateStr(date);
+      const evs = filtered.filter(e => e.dt.startsWith(ds));
+      days.push({ dateStr: ds, events: evs, d: date });
     }
     return days;
+  }, [currentDate, filtered]);
+
+  // ── Month view ──
+  const monthDays = useMemo(() => {
+    const y = currentDate.getFullYear(), m = currentDate.getMonth();
+    const first = new Date(y, m, 1);
+    const last  = new Date(y, m+1, 0);
+    const days  = [];
+    for (let i = 0; i < first.getDay(); i++) days.push(null);
+    for (let d = 1; d <= last.getDate(); d++) {
+      const date = new Date(y, m, d);
+      const ds   = toDateStr(date);
+      days.push({ d, ds, date, evs: filtered.filter(e => e.dt.startsWith(ds)) });
+    }
+    return days;
+  }, [currentDate, filtered]);
+
+  const nav = (dir) => {
+    const d = new Date(currentDate);
+    if (view === 'agenda') d.setDate(d.getDate() + dir * 7);
+    else                   d.setMonth(d.getMonth() + dir);
+    setCurrentDate(d);
   };
 
-  const getEventsForDate = (dateStr) =>
-    filteredEvents.filter(event => event.date_time.split(' ')[0] === dateStr);
-
-  const getTitle = () => {
-    if (viewMode === 'day') return currentDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    return currentDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const getWeekTitle = () => {
+    const d = new Date(currentDate);
+    const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
+    const mon = new Date(d); mon.setDate(d.getDate() + diff);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    const s = (dt) => `${dt.getDate()} ${MONTHS_FR[dt.getMonth()].substring(0,3)}`;
+    return `${s(mon)} — ${s(sun)} ${sun.getFullYear()}`;
   };
 
-  const daysOfWeek = getDaysOfWeek();
+  const handleDelete = async (e) => {
+    if (!window.confirm('Supprimer cet événement ?')) return;
+    try {
+      if (e.type === 'appointment')          await deleteAppointment(e.rawId);
+      else if (String(e.id).startsWith('a_')) await deleteAudience(e.rawId);
+      else                                    await deleteTrial(e.rawId);
+      setSelected(null);
+      load();
+    } catch { alert('Erreur lors de la suppression'); }
+  };
 
-  const tabs = [
-    { key: 'all',         label: 'Tous' },
-    { key: 'appointment', label: 'Rendez-vous' },
-    { key: 'hearing',     label: 'Audiences' },
-  ];
+  const handleCreate = async (ev) => {
+    ev.preventDefault();
+    if (!form.clientId || !form.date || !form.heure) return;
+    setSaving(true);
+    try {
+      await createAppointment({
+        user: { idu: parseInt(form.clientId) },
+        appointment_date: `${form.date}T${form.heure}:00`,
+        status: 'CONFIRMED',
+        reason: form.reason,
+      });
+      load();
+      setShowNew(false);
+      setForm({ date: toDateStr(new Date()), heure: '09:00', clientId: '', reason: '' });
+    } catch { alert('Erreur lors de la création'); }
+    finally { setSaving(false); }
+  };
+
+  const title = view === 'agenda'
+    ? getWeekTitle()
+    : `${MONTHS_FR[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
 
   return (
-    <div className="schedule-wrapper">
-      {/* Top Navigation */}
-      <div className="top-nav">
-        <div className="nav-tabs">
-          {tabs.map(tab => (
-            <button
-              key={tab.key}
-              className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </button>
+    <div className="cal-page">
+
+      {/* ── Header ── */}
+      <div className="cal-header">
+        <div className="cal-header-left">
+          <h1 className="cal-title">Calendrier</h1>
+          <p className="cal-subtitle">Rendez-vous, audiences et échéances</p>
+        </div>
+        <button className="cal-btn-new" onClick={() => setShowNew(true)}>
+          <Plus size={15} /> Nouveau RDV
+        </button>
+      </div>
+
+      {/* ── Toolbar ── */}
+      <div className="cal-toolbar">
+        <div className="cal-nav">
+          <button className="cal-nav-btn" onClick={() => nav(-1)}><ChevronLeft size={16}/></button>
+          <span className="cal-nav-title">{title}</span>
+          <button className="cal-nav-btn" onClick={() => nav(1)}><ChevronRight size={16}/></button>
+          <button className="cal-today-btn" onClick={() => setCurrentDate(new Date())}>Aujourd'hui</button>
+        </div>
+        <div className="cal-toolbar-right">
+          <div className="cal-filters">
+            {[['all','Tous'],['appointment','RDV'],['hearing','Audiences']].map(([k,l]) => (
+              <button key={k} className={`cal-filter${filter===k?' active':''}`} onClick={() => setFilter(k)}>{l}</button>
+            ))}
+          </div>
+          <div className="cal-views">
+            {[['agenda','Agenda'],['month','Mois']].map(([k,l]) => (
+              <button key={k} className={`cal-view-btn${view===k?' active':''}`} onClick={() => setView(k)}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Agenda View ── */}
+      {view === 'agenda' && (
+        <div className="cal-agenda">
+          {agendaDays.length === 0 && (
+            <div className="cal-empty">
+              <Calendar size={32} />
+              <p>Aucun événement sur cette période</p>
+            </div>
+          )}
+          {agendaDays.map(({ dateStr, events: evs, d }) => (
+            <div key={dateStr} className="agenda-day">
+              <div className={`agenda-day-label${isToday(dateStr) ? ' today' : ''}`}>
+                <span className="agenda-day-name">{DAYS_FR[d.getDay()]}</span>
+                <span className={`agenda-day-num${isToday(dateStr) ? ' today' : ''}`}>{d.getDate()}</span>
+                <span className="agenda-month-name">{MONTHS_FR[d.getMonth()]}</span>
+              </div>
+              <div className="agenda-day-events">
+                {evs.length === 0 ? (
+                  <div className="agenda-no-events">Pas d'événement</div>
+                ) : evs.map(ev => (
+                  <div key={ev.id} className={`agenda-event ev-${ev.type}`} onClick={() => setSelected(ev)}>
+                    <div className={`ev-stripe ev-stripe-${ev.type}`} />
+                    <div className="ev-body">
+                      <div className="ev-row">
+                        <span className="ev-title">{ev.title}</span>
+                        <span className={`ev-tag ev-tag-${ev.type}`}>{categoryLabel(ev.type)}</span>
+                      </div>
+                      <div className="ev-meta">
+                        <span className="ev-meta-item"><Clock size={12}/>{fmtTime(ev.dt)}</span>
+                        <span className="ev-meta-item"><User size={12}/>{ev.client}</span>
+                        {ev.location && <span className="ev-meta-item"><MapPin size={12}/>{ev.location}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
-
-        <div className="nav-actions">
-          <div className="search-wrapper">
-            <span className="search-icon">&#128269;</span>
-            <input
-              type="text"
-              className="search-box"
-              placeholder="Rechercher un rendez-vous..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            {searchQuery && (
-              <button className="search-clear" onClick={() => setSearchQuery('')}>✕</button>
-            )}
-          </div>
-          <button className="filter-btn-top">
-            <span>&#9776;</span> Filtrer
-          </button>
-          <button className="new-btn" onClick={() => setShowNewModal(true)}>
-            + Nouveau
-          </button>
-        </div>
-      </div>
-
-      {/* Week Controls */}
-      <div className="week-controls">
-        <div className="week-nav-left">
-          <h2 className="week-title">{getTitle()}</h2>
-          <button className="today-btn" onClick={() => setCurrentDate(new Date())}>Aujourd'hui</button>
-          <div className="arrow-group">
-            <button className="nav-arrow" onClick={() => navigate(-1)} title="Précédent">&#8249;</button>
-            <button className="nav-arrow" onClick={() => navigate(1)} title="Suivant">&#8250;</button>
-          </div>
-        </div>
-        <div className="week-nav-right">
-          <div className="view-toggles">
-            {['day', 'week', 'month'].map(mode => (
-              <button
-                key={mode}
-                className={`view-toggle ${viewMode === mode ? 'active' : ''}`}
-                onClick={() => setViewMode(mode)}
-              >
-                {mode === 'day' ? 'Jour' : mode === 'week' ? 'Semaine' : 'Mois'}
-              </button>
-            ))}
-          </div>
-          {viewMode === 'week' && <span className="date-range">{formatWeekRange()}</span>}
-        </div>
-      </div>
-
-      {/* Modal nouveau rendez-vous */}
-      {showNewModal && (
-        <div className="modal-overlay" onClick={() => setShowNewModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Nouveau rendez-vous</h3>
-              <button className="modal-close" onClick={() => setShowNewModal(false)}>✕</button>
-            </div>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (!newAppt.clientId || !newAppt.date || !newAppt.heure) return;
-              setSaving(true);
-              createAppointment({
-                user: { idu: parseInt(newAppt.clientId) },
-                appointment_date: `${newAppt.date}T${newAppt.heure}:00`,
-                status: 'CONFIRMED',
-                reason: newAppt.reason,
-              })
-                .then(() => {
-                  loadEvents();
-                  setNewAppt({ date: '', heure: '09:00', clientId: '', reason: '' });
-                  setShowNewModal(false);
-                })
-                .catch(() => alert('Erreur lors de la création'))
-                .finally(() => setSaving(false));
-            }}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.3rem', fontSize: '0.875rem' }}>Client *</label>
-                  <select
-                    required
-                    value={newAppt.clientId}
-                    onChange={e => setNewAppt({ ...newAppt, clientId: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.9rem' }}
-                  >
-                    <option value="">Sélectionner un client</option>
-                    {clients.map(c => (
-                      <option key={c.idu} value={c.idu}>{c.prenom} {c.nom}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.3rem', fontSize: '0.875rem' }}>Date *</label>
-                    <input
-                      type="date"
-                      required
-                      value={newAppt.date}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={e => setNewAppt({ ...newAppt, date: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.3rem', fontSize: '0.875rem' }}>Heure *</label>
-                    <input
-                      type="time"
-                      required
-                      value={newAppt.heure}
-                      onChange={e => setNewAppt({ ...newAppt, heure: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.3rem', fontSize: '0.875rem' }}>Motif</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Consultation, Suivi dossier..."
-                    value={newAppt.reason}
-                    onChange={e => setNewAppt({ ...newAppt, reason: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0' }}>
-                <button type="button" onClick={() => setShowNewModal(false)}
-                  style={{ padding: '0.6rem 1.2rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', background: '#f8fafc', cursor: 'pointer', fontWeight: 600 }}>
-                  Annuler
-                </button>
-                <button type="submit" disabled={saving}
-                  style={{ padding: '0.6rem 1.4rem', background: '#1e3a8a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, opacity: saving ? 0.6 : 1 }}>
-                  {saving ? 'Enregistrement...' : 'Créer le rendez-vous'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
 
-      {/* ========== WEEK VIEW ========== */}
-      {viewMode === 'week' && (
-        <div className="schedule-container">
-          <div className="schedule-grid">
-            <div className="week-header">
-              <div className="time-label-header"></div>
-              {daysOfWeek.map((day, index) => (
-                <div key={index} className={`day-header ${day.isToday ? 'today' : ''}`}>
-                  <div className="day-name">{day.name}</div>
-                  <div className="day-date">{day.date}</div>
-                </div>
-              ))}
-            </div>
-
-            {timeSlots.map((slot, timeIndex) => {
-              const hour = parseInt(slot.split(':')[0]);
-              return (
-                <div key={timeIndex} className="time-row">
-                  <div className="time-label">{formatTimeLabel(slot)}</div>
-                  {daysOfWeek.map((day, dayIndex) => (
-                    <div key={dayIndex} className={`time-slot ${day.isToday ? 'today-col' : ''}`}>
-                      {getEventsForDayAndTime(day.dateStr, hour).map(event => (
-                        <div key={event.id} className={`event-block ${event.event_category}`}>
-                          <div className="event-time">{formatEventRange(event.date_time, event.duration)}</div>
-                          <div className="event-title">
-                            {getCategoryIcon(event.event_category)}{' '}
-                            {event.event_category === 'postponed' ? `↻ Reportée · ${event.event_type}` : event.event_type}
-                          </div>
-                          <div className="event-client">{event.client_first_name} {event.client_last_name}</div>
-                          <button
-                            className="event-delete-btn"
-                            onClick={(e) => { e.stopPropagation(); event.event_category === 'hearing' ? handleDeleteHearing(event.id) : handleDelete(event.id); }}
-                            title="Supprimer"
-                          >✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ========== DAY VIEW ========== */}
-      {viewMode === 'day' && (
-        <div className="schedule-container day-view">
-          <div className="day-view-grid">
-            {timeSlots.map((slot, timeIndex) => {
-              const hour = parseInt(slot.split(':')[0]);
-              const dayData = getDayViewDate();
-              return (
-                <div key={timeIndex} className="day-view-row">
-                  <div className="day-view-time">{formatTimeLabel(slot)}</div>
-                  <div className="day-view-slot">
-                    {getEventsForDayAndTime(dayData.dateStr, hour).map(event => (
-                      <div key={event.id} className={`day-event-block ${event.event_category}`}>
-                        <div className="day-event-left">
-                          <span className="day-event-icon">{getCategoryIcon(event.event_category)}</span>
-                        </div>
-                        <div className="day-event-info">
-                          <div className="day-event-title">
-                            {event.event_category === 'postponed' ? `↻ Reportée · ${event.event_type}` : event.event_type}
-                          </div>
-                          <div className="day-event-meta">
-                            <span>{formatEventRange(event.date_time, event.duration)}</span>
-                            <span className="day-event-sep">·</span>
-                            <span>{event.client_first_name} {event.client_last_name}</span>
-                          </div>
-                        </div>
-                        <button
-                          className="event-delete-btn"
-                          onClick={(e) => { e.stopPropagation(); event.event_category === 'hearing' ? handleDeleteHearing(event.id) : handleDelete(event.id); }}
-                          title="Supprimer"
-                        >✕</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ========== MONTH VIEW ========== */}
-      {viewMode === 'month' && (
-        <div className="schedule-container month-view">
-          <div className="month-grid-header">
-            {['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].map(d => (
-              <div key={d} className="month-day-name">{d}</div>
-            ))}
+      {/* ── Month View ── */}
+      {view === 'month' && (
+        <div className="cal-month-wrap">
+          <div className="month-head">
+            {DAYS_FR.map(d => <div key={d} className="month-head-cell">{d}</div>)}
           </div>
           <div className="month-grid">
-            {getMonthDays().map((day, i) => (
-              <div
-                key={i}
-                className={`month-cell ${!day ? 'empty' : ''} ${day?.isToday ? 'today' : ''}`}
-                onClick={() => { if (day) { setCurrentDate(day.fullDate); setViewMode('day'); } }}
-              >
+            {monthDays.map((day, i) => (
+              <div key={i} className={`month-cell${!day?'  empty':''}${day?.ds === toDateStr(new Date()) ? ' today' : ''}`}
+                onClick={() => { if (day) { setCurrentDate(day.date); setView('agenda'); } }}>
                 {day && (
                   <>
-                    <div className="month-cell-date">{day.date}</div>
-                    <div className="month-cell-events">
-                      {getEventsForDate(day.dateStr).slice(0, 3).map((ev, j) => (
-                        <div key={j} className={`month-event-dot ${ev.event_category}`}>
-                          {ev.event_type}
-                        </div>
+                    <span className={`month-cell-num${day.ds === toDateStr(new Date()) ? ' today' : ''}`}>{day.d}</span>
+                    <div className="month-cell-dots">
+                      {day.evs.slice(0,3).map((ev,j) => (
+                        <div key={j} className={`month-dot ev-dot-${ev.type}`} title={ev.title}>{ev.title}</div>
                       ))}
-                      {getEventsForDate(day.dateStr).length > 3 && (
-                        <div className="month-event-more">
-                          +{getEventsForDate(day.dateStr).length - 3} autres
-                        </div>
-                      )}
+                      {day.evs.length > 3 && <div className="month-dot-more">+{day.evs.length-3}</div>}
                     </div>
                   </>
                 )}
@@ -527,8 +274,132 @@ const CalendrierSecretaire = () => {
           </div>
         </div>
       )}
+
+      {/* ── Event Detail Modal ── */}
+      {selected && (
+        <div className="cal-overlay" onClick={() => setSelected(null)}>
+          <div className="cal-detail" onClick={e => e.stopPropagation()}>
+            <div className="detail-head">
+              <div>
+                <span className={`ev-tag ev-tag-${selected.type}`}>{categoryLabel(selected.type)}</span>
+                <h2 className="detail-title">{selected.title}</h2>
+              </div>
+              <button className="detail-close" onClick={() => setSelected(null)}><X size={16}/></button>
+            </div>
+            <div className="detail-body">
+              <div className="detail-row">
+                <Calendar size={15} className="detail-icon" />
+                <div>
+                  <div className="detail-label">Date</div>
+                  <div className="detail-value">{fmtDateLong(selected.dt.split(' ')[0])}</div>
+                </div>
+              </div>
+              <div className="detail-row">
+                <Clock size={15} className="detail-icon" />
+                <div>
+                  <div className="detail-label">Heure</div>
+                  <div className="detail-value">{fmtTime(selected.dt)}</div>
+                </div>
+              </div>
+              <div className="detail-row">
+                <User size={15} className="detail-icon" />
+                <div>
+                  <div className="detail-label">Client / Dossier</div>
+                  <div className="detail-value">{selected.client}</div>
+                </div>
+              </div>
+              {selected.location && (
+                <div className="detail-row">
+                  <MapPin size={15} className="detail-icon" />
+                  <div>
+                    <div className="detail-label">Lieu</div>
+                    <div className="detail-value">{selected.location}</div>
+                  </div>
+                </div>
+              )}
+              <div className="detail-row">
+                <Tag size={15} className="detail-icon" />
+                <div>
+                  <div className="detail-label">Statut</div>
+                  <div className="detail-value">{selected.status}</div>
+                </div>
+              </div>
+            </div>
+            {selected.type === 'appointment' && (
+              <div className="detail-foot">
+                <button className="detail-delete" onClick={() => handleDelete(selected)}>
+                  <Trash2 size={14}/> Supprimer
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── New Appointment Modal ── */}
+      {showNew && (
+        <div className="cal-overlay" onClick={() => setShowNew(false)}>
+          <div className="cal-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Nouveau rendez-vous</h3>
+              <button className="detail-close" onClick={() => setShowNew(false)}><X size={16}/></button>
+            </div>
+            <form onSubmit={handleCreate} className="modal-form">
+              <div className="form-field">
+                <label>Client *</label>
+                <select required value={form.clientId} onChange={e => setForm({...form, clientId: e.target.value})}>
+                  <option value="">Sélectionner un client</option>
+                  {clients.map(c => <option key={c.idu} value={c.idu}>{c.prenom} {c.nom}</option>)}
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Date *</label>
+                <div className="form-date-row">
+                  <select required value={form.date.split('-')[2] || ''} onChange={e => {
+                    const [y, m] = form.date.split('-');
+                    setForm({...form, date: `${y||new Date().getFullYear()}-${m||pad(new Date().getMonth()+1)}-${pad(e.target.value)}`});
+                  }}>
+                    <option value="">Jour</option>
+                    {Array.from({length:31},(_,i)=><option key={i+1} value={pad(i+1)}>{i+1}</option>)}
+                  </select>
+                  <select required value={form.date.split('-')[1] || ''} onChange={e => {
+                    const [y,,d] = form.date.split('-');
+                    setForm({...form, date: `${y||new Date().getFullYear()}-${e.target.value}-${d||'01'}`});
+                  }}>
+                    <option value="">Mois</option>
+                    {MONTHS_FR.map((m,i)=><option key={i} value={pad(i+1)}>{m}</option>)}
+                  </select>
+                  <select required value={form.date.split('-')[0] || ''} onChange={e => {
+                    const [,,d] = form.date.split('-'); const [,m] = form.date.split('-');
+                    setForm({...form, date: `${e.target.value}-${m||pad(new Date().getMonth()+1)}-${d||'01'}`});
+                  }}>
+                    <option value="">Année</option>
+                    {[2025,2026,2027,2028].map(y=><option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="form-field">
+                <label>Heure *</label>
+                <select value={form.heure} onChange={e => setForm({...form, heure: e.target.value})}>
+                  {['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30',
+                    '12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30',
+                    '16:00','16:30','17:00','17:30','18:00'].map(h => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Motif</label>
+                <input type="text" placeholder="Ex: Consultation, Suivi dossier..." value={form.reason} onChange={e => setForm({...form, reason: e.target.value})}/>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={() => setShowNew(false)}>Annuler</button>
+                <button type="submit" className="btn-submit" disabled={saving}>{saving ? 'Enregistrement…' : 'Créer le rendez-vous'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default CalendrierSecretaire;
+}

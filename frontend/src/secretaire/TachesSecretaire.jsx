@@ -1,150 +1,151 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  CheckSquare, Plus, Search, X, LayoutGrid, List,
+  ArrowUp, ArrowDown, Minus, Clock, Calendar, User,
+  Play, RotateCcw, Check, AlertTriangle, Inbox,
+} from 'lucide-react';
 import { getTasks, createTask, updateTask, getUsersByRole } from '../api';
 import { useAuth } from '../AuthContext';
 import './TachesSecretaire.css';
 
 const API_BASE = 'http://localhost:8081';
 
+/* ── Config ── */
 const PRIORITY = {
-  HIGH:   { label: 'Haute',   color: '#ef4444', bg: '#fee2e2', border: '#fca5a5', icon: 'fa-arrow-up',   stripe: '#ef4444' },
-  MEDIUM: { label: 'Moyenne', color: '#f59e0b', bg: '#fef3c7', border: '#fcd34d', icon: 'fa-minus',      stripe: '#f59e0b' },
-  LOW:    { label: 'Basse',   color: '#10b981', bg: '#d1fae5', border: '#6ee7b7', icon: 'fa-arrow-down', stripe: '#10b981' },
+  HIGH:   { label: 'Haute',   color: '#dc2626', bg: '#fef2f2', border: '#fecaca', Icon: ArrowUp,   bar: '#dc2626' },
+  MEDIUM: { label: 'Moyenne', color: '#d97706', bg: '#fffbeb', border: '#fde68a', Icon: Minus,     bar: '#d97706' },
+  LOW:    { label: 'Basse',   color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', Icon: ArrowDown, bar: '#16a34a' },
 };
 
 const COLUMNS = [
-  { key: 'PENDING',     label: 'À faire',  icon: 'fa-circle-dot',   color: '#64748b', headerBg: '#f8fafc', accentBg: '#f1f5f9' },
-  { key: 'IN_PROGRESS', label: 'En cours', icon: 'fa-spinner',       color: '#3b82f6', headerBg: '#eff6ff', accentBg: '#dbeafe' },
-  { key: 'COMPLETED',   label: 'Terminé',  icon: 'fa-circle-check',  color: '#10b981', headerBg: '#f0fdf4', accentBg: '#d1fae5' },
+  { key: 'PENDING',     label: 'À faire',  color: '#64748b', hBg: '#f8fafc', aBg: '#f1f5f9' },
+  { key: 'IN_PROGRESS', label: 'En cours', color: '#2563eb', hBg: '#eff6ff', aBg: '#dbeafe' },
+  { key: 'COMPLETED',   label: 'Terminé',  color: '#16a34a', hBg: '#f0fdf4', aBg: '#dcfce7' },
 ];
 
-const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
-const isOverdue = d => d && new Date(d) < Date.now();
-const isDueSoon = d => {
-  if (!d) return false;
-  const diff = new Date(d) - Date.now();
-  return diff > 0 && diff < 2 * 24 * 60 * 60 * 1000;
-};
+const fmtDate = d =>
+  d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
+const isOverdue  = d => d && new Date(d) < Date.now();
+const isDueSoon  = d => { if (!d) return false; const diff = new Date(d) - Date.now(); return diff > 0 && diff < 2 * 86400000; };
 
-const Initials = ({ name }) => {
+/* ── Avatar ── */
+function Avatar({ photoUrl, name, size = 26 }) {
   const parts = (name || '?').split(' ');
-  return <>{parts[0]?.[0]}{parts[1]?.[0]}</>;
-};
+  const ini   = `${parts[0]?.[0] || ''}${parts[1]?.[0] || ''}`.toUpperCase();
+  return (
+    <div className="tc-avatar" style={{ width: size, height: size, fontSize: size * 0.38 }}>
+      {photoUrl
+        ? <img src={`${API_BASE}${photoUrl}`} alt={name} />
+        : ini
+      }
+    </div>
+  );
+}
 
-const Avatar = ({ photoUrl, name, size = 28 }) => (
-  <div className="tc-avatar" style={{ width: size, height: size, fontSize: size * 0.38 }}>
-    {photoUrl
-      ? <img src={`${API_BASE}${photoUrl}`} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
-      : <Initials name={name} />
-    }
-  </div>
-);
-
-const TaskCard = ({ task, onStatus, listView }) => {
-  const p = PRIORITY[task.priority] || PRIORITY.MEDIUM;
-  const completed = task.status === 'COMPLETED';
-  const overdue = !completed && isOverdue(task.deadline);
-  const soon = !completed && !overdue && isDueSoon(task.deadline);
+/* ── Task card ── */
+function TaskCard({ task, onStatus, listView }) {
+  const p        = PRIORITY[task.priority] || PRIORITY.MEDIUM;
+  const PIcon    = p.Icon;
+  const col      = COLUMNS.find(c => c.key === task.status);
+  const done     = task.status === 'COMPLETED';
+  const overdue  = !done && isOverdue(task.deadline);
+  const soon     = !done && !overdue && isDueSoon(task.deadline);
 
   return (
-    <div className={`tc-card${completed ? ' tc-card-done' : ''}${listView ? ' tc-card-list' : ''}`}
-         style={{ borderLeft: `4px solid ${p.stripe}` }}>
-
-      {/* Top row: priority + (list: status badge) */}
+    <div
+      className={`tc-card${done ? ' tc-card-done' : ''}${listView ? ' tc-card-list' : ''}`}
+      style={{ borderLeft: `3px solid ${p.bar}` }}
+    >
+      {/* Top row */}
       <div className="tc-card-top">
-        <span className="tc-priority-pill" style={{ color: p.color, background: p.bg, border: `1px solid ${p.border}` }}>
-          <i className={`fas ${p.icon}`}></i> {p.label}
+        <span className="tc-prio" style={{ color: p.color, background: p.bg, borderColor: p.border }}>
+          <PIcon size={11} /> {p.label}
         </span>
-        {listView && (
-          <span className="tc-status-pill" style={{
-            color: COLUMNS.find(c => c.key === task.status)?.color || '#64748b',
-            background: COLUMNS.find(c => c.key === task.status)?.accentBg || '#f1f5f9',
-          }}>
-            <i className={`fas ${COLUMNS.find(c => c.key === task.status)?.icon}`}></i>
-            {COLUMNS.find(c => c.key === task.status)?.label}
+        {listView && col && (
+          <span className="tc-status-pill" style={{ color: col.color, background: col.aBg }}>
+            {col.label}
           </span>
         )}
-        {overdue && <span className="tc-overdue-pill"><i className="fas fa-triangle-exclamation"></i> En retard</span>}
+        {overdue && (
+          <span className="tc-overdue-pill">
+            <AlertTriangle size={11} /> En retard
+          </span>
+        )}
       </div>
 
       {/* Title */}
-      <h3 className={`tc-card-title${completed ? ' tc-done-text' : ''}`}>{task.title}</h3>
+      <h3 className={`tc-card-title${done ? ' tc-done-text' : ''}`}>{task.title}</h3>
 
       {/* Description */}
       {task.description && (
-        <p className={`tc-card-desc${completed ? ' tc-done-text' : ''}`}>{task.description}</p>
+        <p className={`tc-card-desc${done ? ' tc-done-text' : ''}`}>{task.description}</p>
       )}
 
-      {/* Footer: assignee + deadline */}
+      {/* Footer */}
       <div className="tc-card-footer">
         {task.assignedToName ? (
           <div className="tc-assignee">
-            <Avatar photoUrl={task.assignedToPhotoUrl} name={task.assignedToName} size={26} />
+            <Avatar photoUrl={task.assignedToPhotoUrl} name={task.assignedToName} size={22} />
             <span>{task.assignedToName}</span>
           </div>
         ) : (
           <div className="tc-assignee tc-no-assignee">
-            <i className="fas fa-user-slash"></i> Non assigné
+            <User size={12} /> Non assigné
           </div>
         )}
-
         {task.deadline && (
-          <div className={`tc-deadline${overdue ? ' tc-deadline-overdue' : ''}${soon ? ' tc-deadline-soon' : ''}`}>
-            <i className={`fas ${overdue ? 'fa-triangle-exclamation' : ''} ${soon ? 'fa-clock' : ''} ${!overdue && !soon ? 'fa-calendar' : ''}`}></i>
+          <div className={`tc-deadline${overdue ? ' tc-deadline-overdue' : soon ? ' tc-deadline-soon' : ''}`}>
+            {overdue || soon ? <AlertTriangle size={11} /> : <Calendar size={11} />}
             {fmtDate(task.deadline)}
           </div>
         )}
       </div>
 
-      {/* Created by */}
       {task.createdByName && (
-        <div className="tc-created-by">
-          <i className="fas fa-pen-to-square"></i> Par {task.createdByName}
-        </div>
+        <div className="tc-created-by">Par {task.createdByName}</div>
       )}
 
       {/* Actions */}
-      {!completed && (
+      {!done ? (
         <div className="tc-card-actions">
           {task.status === 'PENDING' && (
             <button className="tc-btn tc-btn-start" onClick={() => onStatus(task.id, 'IN_PROGRESS')}>
-              <i className="fas fa-play"></i> Commencer
+              <Play size={12} /> Commencer
             </button>
           )}
           {task.status === 'IN_PROGRESS' && (
             <button className="tc-btn tc-btn-back" onClick={() => onStatus(task.id, 'PENDING')}>
-              <i className="fas fa-rotate-left"></i>
+              <RotateCcw size={12} />
             </button>
           )}
           <button className="tc-btn tc-btn-done" onClick={() => onStatus(task.id, 'COMPLETED')}>
-            <i className="fas fa-check"></i> Terminer
+            <Check size={12} /> Terminer
           </button>
         </div>
-      )}
-      {completed && (
-        <div className="tc-card-done-banner">
-          <i className="fas fa-circle-check"></i> Tâche terminée
+      ) : (
+        <div className="tc-done-banner">
+          <Check size={12} /> Tâche terminée
         </div>
       )}
     </div>
   );
-};
+}
 
-const TachesSecretaire = () => {
+/* ════════════════════════════════════════════════════
+   COMPONENT
+   ════════════════════════════════════════════════════ */
+export default function TachesSecretaire() {
   const { user } = useAuth();
-
-  const [tasks,       setTasks]       = useState([]);
-  const [users,       setUsers]       = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState(null);
-  const [view,        setView]        = useState('kanban'); // 'kanban' | 'list'
-  const [search,      setSearch]      = useState('');
-  const [filterPrio,  setFilterPrio]  = useState('');
-  const [showModal,   setShowModal]   = useState(false);
-  const [saving,      setSaving]      = useState(false);
-
+  const [tasks,      setTasks]      = useState([]);
+  const [users,      setUsers]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [view,       setView]       = useState('kanban');
+  const [search,     setSearch]     = useState('');
+  const [filterPrio, setFilterPrio] = useState('');
+  const [showModal,  setShowModal]  = useState(false);
+  const [saving,     setSaving]     = useState(false);
   const [form, setForm] = useState({
-    title: '', description: '', priority: 'MEDIUM',
-    deadline: '', assignedToId: '',
+    title: '', description: '', priority: 'MEDIUM', deadline: '', assignedToId: '',
   });
 
   useEffect(() => {
@@ -156,12 +157,11 @@ const TachesSecretaire = () => {
     ]).then(([tasksRes, av, sec, stag]) => {
       setTasks(tasksRes.data || []);
       setUsers([
-        ...(av.data || []).map(u => ({ ...u, roleLabel: 'Avocat' })),
-        ...(sec.data || []).map(u => ({ ...u, roleLabel: 'Secrétaire' })),
+        ...(av.data   || []).map(u => ({ ...u, roleLabel: 'Avocat' })),
+        ...(sec.data  || []).map(u => ({ ...u, roleLabel: 'Secrétaire' })),
         ...(stag.data || []).map(u => ({ ...u, roleLabel: 'Stagiaire' })),
       ]);
-    }).catch(() => setError('Impossible de charger les tâches'))
-      .finally(() => setLoading(false));
+    }).finally(() => setLoading(false));
   }, []);
 
   const handleStatus = (taskId, newStatus) => {
@@ -175,17 +175,16 @@ const TachesSecretaire = () => {
   const handleCreate = async () => {
     if (!form.title.trim()) return;
     setSaving(true);
-    const payload = {
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      priority: form.priority,
-      status: 'PENDING',
-      deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
-      assignedTo: form.assignedToId ? { idu: Number(form.assignedToId) } : null,
-      createdBy: user?.idu ? { idu: user.idu } : null,
-    };
     try {
-      const res = await createTask(payload);
+      const res = await createTask({
+        title:       form.title.trim(),
+        description: form.description.trim() || null,
+        priority:    form.priority,
+        status:      'PENDING',
+        deadline:    form.deadline ? new Date(form.deadline).toISOString() : null,
+        assignedTo:  form.assignedToId ? { idu: Number(form.assignedToId) } : null,
+        createdBy:   user?.idu ? { idu: user.idu } : null,
+      });
       setTasks(prev => [res.data, ...prev]);
       setShowModal(false);
       setForm({ title: '', description: '', priority: 'MEDIUM', deadline: '', assignedToId: '' });
@@ -199,7 +198,7 @@ const TachesSecretaire = () => {
   const filtered = useMemo(() => tasks.filter(t => {
     const matchSearch = (t.title || '').toLowerCase().includes(search.toLowerCase()) ||
                         (t.description || '').toLowerCase().includes(search.toLowerCase());
-    const matchPrio = !filterPrio || t.priority === filterPrio;
+    const matchPrio   = !filterPrio || t.priority === filterPrio;
     return matchSearch && matchPrio;
   }), [tasks, search, filterPrio]);
 
@@ -212,124 +211,103 @@ const TachesSecretaire = () => {
     overdue:    tasks.filter(t => t.status !== 'COMPLETED' && isOverdue(t.deadline)).length,
   }), [tasks]);
 
-  if (loading) return (
-    <div className="tc-page">
-      <div className="tc-loading">
-        <i className="fas fa-spinner fa-spin"></i> Chargement...
-      </div>
-    </div>
-  );
-
-  if (error) return (
-    <div className="tc-page">
-      <div className="tc-error"><i className="fas fa-exclamation-circle"></i> {error}</div>
-    </div>
-  );
-
+  /* ── render ── */
   return (
-    <div className="tc-page">
+    <div className="tc">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="tc-header">
         <div>
-          <h1 className="tc-title"><i className="fas fa-list-check"></i> To-Do Liste</h1>
-          <p className="tc-subtitle">Suivez et gérez toutes les tâches du cabinet</p>
+          <h1 className="tc-title">Tâches</h1>
+          <p className="tc-sub">Suivez et gérez les tâches du cabinet</p>
         </div>
-        <button className="tc-add-btn" onClick={() => setShowModal(true)}>
-          <i className="fas fa-plus"></i> Nouvelle tâche
+        <button className="tc-btn-new" onClick={() => setShowModal(true)}>
+          <Plus size={15} /> Nouvelle tâche
         </button>
       </div>
 
-      {/* ── KPIs ── */}
+      {/* KPIs */}
       <div className="tc-kpis">
-        <div className="tc-kpi tc-kpi-total">
-          <div className="tc-kpi-icon"><i className="fas fa-list-check"></i></div>
-          <div><strong>{stats.total}</strong><span>Total</span></div>
+        <div className="tc-kpi tc-kpi-blue">
+          <div className="tc-kpi-ic"><CheckSquare size={18} /></div>
+          <div><div className="tc-kpi-n">{stats.total}</div><div className="tc-kpi-l">Total</div></div>
         </div>
-        <div className="tc-kpi tc-kpi-pending">
-          <div className="tc-kpi-icon"><i className="fas fa-circle-dot"></i></div>
-          <div><strong>{stats.pending}</strong><span>À faire</span></div>
+        <div className="tc-kpi tc-kpi-gray">
+          <div className="tc-kpi-ic"><Clock size={18} /></div>
+          <div><div className="tc-kpi-n">{stats.pending}</div><div className="tc-kpi-l">À faire</div></div>
         </div>
-        <div className="tc-kpi tc-kpi-progress">
-          <div className="tc-kpi-icon"><i className="fas fa-spinner"></i></div>
-          <div><strong>{stats.inProgress}</strong><span>En cours</span></div>
+        <div className="tc-kpi tc-kpi-indigo">
+          <div className="tc-kpi-ic"><Play size={18} /></div>
+          <div><div className="tc-kpi-n">{stats.inProgress}</div><div className="tc-kpi-l">En cours</div></div>
         </div>
-        <div className="tc-kpi tc-kpi-done">
-          <div className="tc-kpi-icon"><i className="fas fa-circle-check"></i></div>
-          <div><strong>{stats.completed}</strong><span>Terminées</span></div>
+        <div className="tc-kpi tc-kpi-green">
+          <div className="tc-kpi-ic"><Check size={18} /></div>
+          <div><div className="tc-kpi-n">{stats.completed}</div><div className="tc-kpi-l">Terminées</div></div>
         </div>
-        <div className="tc-kpi tc-kpi-urgent">
-          <div className="tc-kpi-icon"><i className="fas fa-arrow-up"></i></div>
-          <div><strong>{stats.urgent}</strong><span>Urgentes</span></div>
+        <div className="tc-kpi tc-kpi-red">
+          <div className="tc-kpi-ic"><ArrowUp size={18} /></div>
+          <div><div className="tc-kpi-n">{stats.urgent}</div><div className="tc-kpi-l">Urgentes</div></div>
         </div>
         {stats.overdue > 0 && (
-          <div className="tc-kpi tc-kpi-overdue">
-            <div className="tc-kpi-icon"><i className="fas fa-triangle-exclamation"></i></div>
-            <div><strong>{stats.overdue}</strong><span>En retard</span></div>
+          <div className="tc-kpi tc-kpi-orange">
+            <div className="tc-kpi-ic"><AlertTriangle size={18} /></div>
+            <div><div className="tc-kpi-n">{stats.overdue}</div><div className="tc-kpi-l">En retard</div></div>
           </div>
         )}
       </div>
 
-      {/* ── Toolbar ── */}
+      {/* Toolbar */}
       <div className="tc-toolbar">
         <div className="tc-search">
-          <i className="fas fa-search"></i>
+          <Search size={15} className="tc-search-ic" />
           <input
             type="text"
-            placeholder="Rechercher une tâche..."
+            placeholder="Rechercher une tâche…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          {search && <button className="tc-clear" onClick={() => setSearch('')}><i className="fas fa-times"></i></button>}
+          {search && <button className="tc-clear" onClick={() => setSearch('')}><X size={14} /></button>}
         </div>
-        <div className="tc-filter">
-          <i className="fas fa-flag"></i>
-          <select value={filterPrio} onChange={e => setFilterPrio(e.target.value)}>
-            <option value="">Toutes les priorités</option>
-            <option value="HIGH">Haute</option>
-            <option value="MEDIUM">Moyenne</option>
-            <option value="LOW">Basse</option>
-          </select>
-        </div>
-        <div className="tc-view-btns">
-          <button
-            className={`tc-view-btn${view === 'kanban' ? ' active' : ''}`}
-            onClick={() => setView('kanban')}
-            title="Vue Kanban"
-          >
-            <i className="fas fa-table-columns"></i>
+
+        <select className="tc-sel" value={filterPrio} onChange={e => setFilterPrio(e.target.value)}>
+          <option value="">Toutes les priorités</option>
+          <option value="HIGH">Haute</option>
+          <option value="MEDIUM">Moyenne</option>
+          <option value="LOW">Basse</option>
+        </select>
+
+        <div className="tc-view-group">
+          <button className={`tc-vbtn${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')} title="Vue Kanban">
+            <LayoutGrid size={15} />
           </button>
-          <button
-            className={`tc-view-btn${view === 'list' ? ' active' : ''}`}
-            onClick={() => setView('list')}
-            title="Vue liste"
-          >
-            <i className="fas fa-list"></i>
+          <button className={`tc-vbtn${view === 'list' ? ' active' : ''}`} onClick={() => setView('list')} title="Vue liste">
+            <List size={15} />
           </button>
         </div>
-        <span className="tc-count">{filtered.length} tâche{filtered.length === 1 ? '' : 's'}</span>
+
+        <span className="tc-count">{filtered.length} tâche{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
-      {/* ── Kanban ── */}
-      {view === 'kanban' && (
+      {/* Loading */}
+      {loading && <div className="tc-loading">Chargement…</div>}
+
+      {/* Kanban */}
+      {!loading && view === 'kanban' && (
         <div className="tc-kanban">
           {COLUMNS.map(col => {
             const colTasks = filtered.filter(t => t.status === col.key);
             return (
               <div key={col.key} className="tc-col">
-                <div className="tc-col-header" style={{ background: col.headerBg, borderBottom: `2px solid ${col.accentBg}` }}>
-                  <div className="tc-col-label">
-                    <i className={`fas ${col.icon}`} style={{ color: col.color }}></i>
-                    <span style={{ color: col.color }}>{col.label}</span>
-                  </div>
-                  <span className="tc-col-count" style={{ background: col.accentBg, color: col.color }}>
+                <div className="tc-col-head" style={{ background: col.hBg }}>
+                  <span className="tc-col-label" style={{ color: col.color }}>{col.label}</span>
+                  <span className="tc-col-badge" style={{ background: col.aBg, color: col.color }}>
                     {colTasks.length}
                   </span>
                 </div>
                 <div className="tc-col-body">
                   {colTasks.length === 0 ? (
                     <div className="tc-col-empty">
-                      <i className="fas fa-inbox"></i>
+                      <Inbox size={22} className="tc-col-empty-ic" />
                       <p>Aucune tâche</p>
                     </div>
                   ) : (
@@ -344,14 +322,14 @@ const TachesSecretaire = () => {
         </div>
       )}
 
-      {/* ── List view ── */}
-      {view === 'list' && (
+      {/* List */}
+      {!loading && view === 'list' && (
         <div className="tc-list">
           {filtered.length === 0 ? (
             <div className="tc-empty">
-              <i className="fas fa-inbox"></i>
-              <p>Aucune tâche trouvée</p>
-              <small>Modifiez vos filtres ou créez une nouvelle tâche</small>
+              <Inbox size={36} className="tc-empty-ic" />
+              <h3>Aucune tâche trouvée</h3>
+              <p>Modifiez vos filtres ou créez une nouvelle tâche</p>
             </div>
           ) : (
             filtered.map(task => (
@@ -361,38 +339,40 @@ const TachesSecretaire = () => {
         </div>
       )}
 
-      {/* ── Modal création ── */}
+      {/* Modal */}
       {showModal && (
-        <div className="tc-modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)} onKeyDown={e => e.key === 'Escape' && setShowModal(false)}>
+        <>
+          <div className="tc-scrim" onClick={() => setShowModal(false)} />
           <div className="tc-modal">
-            <div className="tc-modal-header">
-              <h3><i className="fas fa-plus-circle"></i> Nouvelle tâche</h3>
-              <button className="tc-modal-close" onClick={() => setShowModal(false)}>
-                <i className="fas fa-times"></i>
-              </button>
+            <div className="tc-modal-head">
+              <div>
+                <h2>Nouvelle tâche</h2>
+                <p>Créez et assignez une tâche au cabinet</p>
+              </div>
+              <button className="tc-modal-close" onClick={() => setShowModal(false)}><X size={16} /></button>
             </div>
             <div className="tc-modal-body">
-              <div className="tc-form-group">
-                <label>Titre *</label>
+              <div className="tc-field">
+                <label>Titre <span className="tc-req">*</span></label>
                 <input
                   type="text"
-                  placeholder="Intitulé de la tâche..."
+                  placeholder="Intitulé de la tâche…"
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   autoFocus
                 />
               </div>
-              <div className="tc-form-group">
+              <div className="tc-field">
                 <label>Description</label>
                 <textarea
-                  placeholder="Détails de la tâche (optionnel)..."
+                  placeholder="Détails de la tâche (optionnel)…"
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   rows={3}
                 />
               </div>
-              <div className="tc-form-row">
-                <div className="tc-form-group">
+              <div className="tc-row2">
+                <div className="tc-field">
                   <label>Priorité</label>
                   <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
                     <option value="HIGH">Haute</option>
@@ -400,7 +380,7 @@ const TachesSecretaire = () => {
                     <option value="LOW">Basse</option>
                   </select>
                 </div>
-                <div className="tc-form-group">
+                <div className="tc-field">
                   <label>Échéance</label>
                   <input
                     type="date"
@@ -409,7 +389,7 @@ const TachesSecretaire = () => {
                   />
                 </div>
               </div>
-              <div className="tc-form-group">
+              <div className="tc-field">
                 <label>Assigner à</label>
                 <select value={form.assignedToId} onChange={e => setForm(f => ({ ...f, assignedToId: e.target.value }))}>
                   <option value="">— Non assigné —</option>
@@ -421,27 +401,19 @@ const TachesSecretaire = () => {
                 </select>
               </div>
             </div>
-            <div className="tc-modal-footer">
-              <button className="tc-modal-cancel" onClick={() => setShowModal(false)}>
-                Annuler
-              </button>
+            <div className="tc-modal-ft">
+              <button className="tc-btn-cancel" onClick={() => setShowModal(false)}>Annuler</button>
               <button
-                className="tc-modal-submit"
+                className="tc-btn-save"
                 onClick={handleCreate}
                 disabled={saving || !form.title.trim()}
               >
-                {saving
-                  ? <><i className="fas fa-spinner fa-spin"></i> Création...</>
-                  : <><i className="fas fa-check"></i> Créer la tâche</>
-                }
+                {saving ? 'Création…' : <><Check size={14} /> Créer la tâche</>}
               </button>
             </div>
           </div>
-        </div>
+        </>
       )}
-
     </div>
   );
-};
-
-export default TachesSecretaire;
+}

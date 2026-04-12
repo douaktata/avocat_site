@@ -98,8 +98,9 @@ public class AuthController {
                 roles
             ));
         } catch (Exception e) {
+            String msg = (e.getMessage() != null) ? e.getMessage() : "Invalid email or password";
             return ResponseEntity.status(401).body(
-                new ErrorResponse(401, "Unauthorized", "Invalid email or password")
+                new ErrorResponse(401, "Unauthorized", msg)
             );
         }
     }

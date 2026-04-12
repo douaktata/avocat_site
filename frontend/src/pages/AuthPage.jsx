@@ -1,34 +1,36 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { login, register, forgotPassword } from '../api';
-import BackgroundCircles from '../components/BackgroundCircles';
-import Logo from '../components/Logo';
 import DatePicker from '../components/DatePicker';
+import {
+  Scale, ArrowLeft, Mail, Lock, User, Phone, CreditCard,
+  MapPin, Calendar, Eye, EyeOff, AlertCircle, CheckCircle,
+} from 'lucide-react';
+import justiceBg from '../assets/justice-bg.png';
+import './AuthPage.css';
 
 export default function AuthPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('login');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const { loginUser } = useAuth();
 
-  // Login state
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginEmail,    setLoginEmail]    = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPwd,  setShowLoginPwd]  = useState(false);
 
-  // Forgot password state
-  const [showForgot, setShowForgot] = useState(false);
+  const [showForgot,  setShowForgot]  = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
 
-  // Register state
   const [regForm, setRegForm] = useState({
     nom: '', prenom: '', email: '', password: '',
     tel: '', CIN: '', adresse: '', date_naissance: '',
   });
+  const [showRegPwd, setShowRegPwd] = useState(false);
 
-  const switchTab = (t) => {
-    setTab(t);
-    setMessage(null);
-  };
+  const switchTab = (t) => { setTab(t); setMessage(null); setShowForgot(false); };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -38,11 +40,8 @@ export default function AuthPage() {
       const { data } = await login(loginEmail, loginPassword);
       loginUser(data);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Email ou mot de passe incorrect';
-      setMessage({ type: 'error', text: msg });
-    } finally {
-      setLoading(false);
-    }
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Email ou mot de passe incorrect' });
+    } finally { setLoading(false); }
   };
 
   const handleRegister = async (e) => {
@@ -50,22 +49,12 @@ export default function AuthPage() {
     setMessage(null);
     setLoading(true);
     try {
-      await register({
-        ...regForm,
-        date_naissance: regForm.date_naissance || null,
-      });
+      await register({ ...regForm, date_naissance: regForm.date_naissance || null });
       setMessage({ type: 'success', text: 'Inscription réussie ! Vous pouvez vous connecter.' });
       setTimeout(() => switchTab('login'), 1500);
     } catch (err) {
-      const msg = err.response?.data?.message || "Erreur lors de l'inscription";
-      setMessage({ type: 'error', text: msg });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateReg = (field, value) => {
-    setRegForm((prev) => ({ ...prev, [field]: value }));
+      setMessage({ type: 'error', text: err.response?.data?.message || "Erreur lors de l'inscription" });
+    } finally { setLoading(false); }
   };
 
   const handleForgotPassword = async (e) => {
@@ -78,123 +67,204 @@ export default function AuthPage() {
       setShowForgot(false);
       setForgotEmail('');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Erreur lors de la réinitialisation';
-      setMessage({ type: 'error', text: msg });
-    } finally {
-      setLoading(false);
-    }
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Erreur lors de la réinitialisation' });
+    } finally { setLoading(false); }
   };
 
-  return (
-    <div className="auth-layout">
-      <BackgroundCircles />
-      <div className="glass-card">
-        <Logo />
-        <h1 className="app-title">JurisHub</h1>
-        <p className="app-subtitle">Cabinet d'Avocats - Plateforme de Gestion</p>
+  const updateReg = (field, value) => setRegForm(prev => ({ ...prev, [field]: value }));
 
-        <div className="tabs">
-          <button className={`tab ${tab === 'login' ? 'active' : ''}`} onClick={() => switchTab('login')}>
-            Connexion
-          </button>
-          <button className={`tab ${tab === 'register' ? 'active' : ''}`} onClick={() => switchTab('register')}>
-            Inscription
-          </button>
+  const heading = showForgot
+    ? { title: 'Mot de passe oublié', sub: 'Recevez un nouveau mot de passe par email' }
+    : tab === 'login'
+      ? { title: 'Bon retour !',       sub: 'Connectez-vous à votre espace personnel' }
+      : { title: 'Créer un compte',    sub: 'Rejoignez l\'espace client du Cabinet Hajaij' };
+
+  return (
+    <div className="auth-layout" style={{ backgroundImage: `url(${justiceBg})` }}>
+
+      {/* Back to landing */}
+      <button className="auth-back" onClick={() => navigate('/')}>
+        <ArrowLeft size={13} /> Retour à l'accueil
+      </button>
+
+      <div className="auth-card">
+
+        {/* Logo */}
+        <div className="auth-card-header">
+          <div className="auth-logo">
+            <Scale size={18} />
+            <span>JurisHub</span>
+          </div>
+          <h1 className="auth-card-title">{heading.title}</h1>
+          <p className="auth-card-sub">{heading.sub}</p>
         </div>
 
-        {tab === 'login' && !showForgot && (
-          <form onSubmit={handleLogin} className="form-enter" key="login">
-            <div className="form-group">
-              <label>Email</label>
-              <input type="email" required placeholder="votre@email.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Mot de passe</label>
-              <input type="password" required placeholder="Votre mot de passe" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
-            </div>
-            <button type="submit" className={`btn-submit ${loading ? 'loading' : ''}`} disabled={loading}>
-              {loading && <span className="spinner" />}
-              {loading ? 'Connexion...' : 'Se connecter'}
+        {/* Tabs — hidden on forgot password */}
+        {!showForgot && (
+          <div className="auth-tabs">
+            <button className={`auth-tab${tab === 'login' ? ' active' : ''}`} onClick={() => switchTab('login')}>
+              Connexion
             </button>
-            <p style={{ textAlign: 'center', marginTop: '12px', fontSize: '0.875rem' }}>
-              <button type="button" onClick={() => { setShowForgot(true); setMessage(null); }}
-                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit' }}>
+            <button className={`auth-tab${tab === 'register' ? ' active' : ''}`} onClick={() => switchTab('register')}>
+              Inscription
+            </button>
+          </div>
+        )}
+
+        {/* Alert */}
+        {message && (
+          <div className={`auth-alert auth-alert-${message.type}`}>
+            {message.type === 'error' ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
+            {message.text}
+          </div>
+        )}
+
+        {/* ── Login ── */}
+        {tab === 'login' && !showForgot && (
+          <form onSubmit={handleLogin} className="auth-form" key="login">
+            <div className="auth-field">
+              <label>Adresse email</label>
+              <div className="auth-input-wrap">
+                <Mail size={14} className="auth-input-ic" />
+                <input type="email" required placeholder="votre@email.com"
+                  value={loginEmail} onChange={e => setLoginEmail(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label>Mot de passe</label>
+              <div className="auth-input-wrap">
+                <Lock size={14} className="auth-input-ic" />
+                <input type={showLoginPwd ? 'text' : 'password'} required placeholder="Votre mot de passe"
+                  value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
+                <button type="button" className="auth-eye" onClick={() => setShowLoginPwd(s => !s)}>
+                  {showLoginPwd ? <EyeOff size={13} /> : <Eye size={13} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="auth-forgot-row">
+              <button type="button" className="auth-link"
+                onClick={() => { setShowForgot(true); setMessage(null); }}>
                 Mot de passe oublié ?
               </button>
-            </p>
+            </div>
+
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? <><span className="auth-spinner" /> Connexion…</> : 'Se connecter'}
+            </button>
           </form>
         )}
 
+        {/* ── Forgot password ── */}
         {tab === 'login' && showForgot && (
-          <form onSubmit={handleForgotPassword} className="form-enter" key="forgot">
-            <p style={{ marginBottom: '12px', fontSize: '0.9rem', color: '#64748b' }}>
-              Entrez votre email pour recevoir un nouveau mot de passe temporaire.
-            </p>
-            <div className="form-group">
-              <label>Email</label>
-              <input type="email" required placeholder="votre@email.com" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} />
+          <form onSubmit={handleForgotPassword} className="auth-form" key="forgot">
+            <div className="auth-field">
+              <label>Adresse email</label>
+              <div className="auth-input-wrap">
+                <Mail size={14} className="auth-input-ic" />
+                <input type="email" required placeholder="votre@email.com"
+                  value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} />
+              </div>
             </div>
-            <button type="submit" className={`btn-submit ${loading ? 'loading' : ''}`} disabled={loading}>
-              {loading && <span className="spinner" />}
-              {loading ? 'Envoi...' : 'Envoyer le nouveau mot de passe'}
+
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? <><span className="auth-spinner" /> Envoi…</> : 'Envoyer le lien'}
             </button>
-            <p style={{ textAlign: 'center', marginTop: '12px', fontSize: '0.875rem' }}>
-              <button type="button" onClick={() => { setShowForgot(false); setMessage(null); }}
-                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit' }}>
-                ← Retour à la connexion
-              </button>
-            </p>
+
+            <button type="button" className="auth-ghost"
+              onClick={() => { setShowForgot(false); setMessage(null); }}>
+              <ArrowLeft size={13} /> Retour à la connexion
+            </button>
           </form>
         )}
 
+        {/* ── Register ── */}
         {tab === 'register' && (
-          <form onSubmit={handleRegister} className="form-enter" key="register">
-            <div className="row">
-              <div className="form-group">
-                <label>Nom</label>
-                <input type="text" required placeholder="Nom" value={regForm.nom} onChange={(e) => updateReg('nom', e.target.value)} />
-              </div>
-              <div className="form-group">
+          <form onSubmit={handleRegister} className="auth-form" key="register">
+            <div className="auth-row">
+              <div className="auth-field">
                 <label>Prénom</label>
-                <input type="text" required placeholder="Prénom" value={regForm.prenom} onChange={(e) => updateReg('prenom', e.target.value)} />
+                <div className="auth-input-wrap">
+                  <User size={14} className="auth-input-ic" />
+                  <input type="text" required placeholder="Prénom"
+                    value={regForm.prenom} onChange={e => updateReg('prenom', e.target.value)} />
+                </div>
+              </div>
+              <div className="auth-field">
+                <label>Nom</label>
+                <div className="auth-input-wrap">
+                  <User size={14} className="auth-input-ic" />
+                  <input type="text" required placeholder="Nom"
+                    value={regForm.nom} onChange={e => updateReg('nom', e.target.value)} />
+                </div>
               </div>
             </div>
-            <div className="form-group">
+
+            <div className="auth-field">
               <label>Email</label>
-              <input type="email" required placeholder="votre@email.com" value={regForm.email} onChange={(e) => updateReg('email', e.target.value)} />
+              <div className="auth-input-wrap">
+                <Mail size={14} className="auth-input-ic" />
+                <input type="email" required placeholder="votre@email.com"
+                  value={regForm.email} onChange={e => updateReg('email', e.target.value)} />
+              </div>
             </div>
-            <div className="form-group">
+
+            <div className="auth-field">
               <label>Mot de passe</label>
-              <input type="password" required minLength={6} placeholder="Min. 6 caractères" value={regForm.password} onChange={(e) => updateReg('password', e.target.value)} />
+              <div className="auth-input-wrap">
+                <Lock size={14} className="auth-input-ic" />
+                <input type={showRegPwd ? 'text' : 'password'} required minLength={6}
+                  placeholder="Minimum 6 caractères"
+                  value={regForm.password} onChange={e => updateReg('password', e.target.value)} />
+                <button type="button" className="auth-eye" onClick={() => setShowRegPwd(s => !s)}>
+                  {showRegPwd ? <EyeOff size={13} /> : <Eye size={13} />}
+                </button>
+              </div>
             </div>
-            <div className="row">
-              <div className="form-group">
+
+            <div className="auth-row">
+              <div className="auth-field">
                 <label>Téléphone</label>
-                <input type="text" placeholder="Téléphone" value={regForm.tel} onChange={(e) => updateReg('tel', e.target.value)} />
+                <div className="auth-input-wrap">
+                  <Phone size={14} className="auth-input-ic" />
+                  <input type="text" placeholder="+216 XX XXX XXX"
+                    value={regForm.tel} onChange={e => updateReg('tel', e.target.value)} />
+                </div>
               </div>
-              <div className="form-group">
+              <div className="auth-field">
                 <label>CIN</label>
-                <input type="text" placeholder="CIN" value={regForm.CIN} onChange={(e) => updateReg('CIN', e.target.value)} />
+                <div className="auth-input-wrap">
+                  <CreditCard size={14} className="auth-input-ic" />
+                  <input type="text" placeholder="Numéro CIN"
+                    value={regForm.CIN} onChange={e => updateReg('CIN', e.target.value)} />
+                </div>
               </div>
             </div>
-            <div className="form-group">
+
+            <div className="auth-field">
               <label>Adresse</label>
-              <input type="text" placeholder="Adresse" value={regForm.adresse} onChange={(e) => updateReg('adresse', e.target.value)} />
+              <div className="auth-input-wrap">
+                <MapPin size={14} className="auth-input-ic" />
+                <input type="text" placeholder="Votre adresse"
+                  value={regForm.adresse} onChange={e => updateReg('adresse', e.target.value)} />
+              </div>
             </div>
-            <div className="form-group">
+
+            <div className="auth-field">
               <label>Date de naissance</label>
-              <DatePicker value={regForm.date_naissance} onChange={(v) => updateReg('date_naissance', v)} />
+              <div className="auth-input-wrap">
+                <Calendar size={14} className="auth-input-ic" />
+                <DatePicker value={regForm.date_naissance} onChange={v => updateReg('date_naissance', v)} />
+              </div>
             </div>
-            <button type="submit" className={`btn-submit ${loading ? 'loading' : ''}`} disabled={loading}>
-              {loading && <span className="spinner" />}
-              {loading ? 'Inscription...' : "S'inscrire"}
+
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? <><span className="auth-spinner" /> Inscription…</> : 'Créer mon compte'}
             </button>
           </form>
         )}
 
-        {message && (
-          <div className={`message ${message.type}`}>{message.text}</div>
-        )}
       </div>
     </div>
   );

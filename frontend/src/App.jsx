@@ -50,6 +50,8 @@ import StaffDetail from './secretaire/StaffDetail';
 import ClientDetails from './secretaire/clientdetails';
 import DossiersSecretaire from './secretaire/DossiersSecretaire';
 import TachesSecretaire from './secretaire/TachesSecretaire';
+import MessagerieSecretaire from './secretaire/MessagerieSecretaire';
+import ProfileSecretaire from './secretaire/ProfileSecretaire';
 
 // Stagiaire
 import LayoutStagiaire from './stagiaire/LayoutStagiaire';
@@ -158,12 +160,12 @@ function AppRoutes() {
         <Route path="dossiers/:id" element={<DossierDetail />} />
         <Route path="taches" element={<TachesSecretaire />} />
         <Route path="bureau" element={<GestionBureau />} />
-        <Route path="messages" element={<Messagerie contactRoles={['CLIENT', 'AVOCAT', 'STAGIAIRE']} pageSubtitle="Communiquez avec les clients, avocats et stagiaires" />} />
+        <Route path="messages" element={<MessagerieSecretaire />} />
         <Route path="affaires" element={<AffairesJuridiques />} />
         <Route path="staff" element={<Staffsec />} />
         <Route path="staff/:id" element={<StaffDetail />} />
         <Route path="recherche" element={<RechercheGlobale />} />
-        <Route path="profile" element={<Profile />} />
+        <Route path="profile" element={<ProfileSecretaire />} />
       </Route>
 
       {/* Stagiaire */}

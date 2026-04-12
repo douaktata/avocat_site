@@ -1,321 +1,298 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { getSlots, createSlot, updateSlot, deleteSlot } from '../api';
-import '../avocate/Agendaav.css';
+import { useState, useMemo, useEffect } from 'react';
+import {
+  CalendarDays, Plus, Clock, Trash2, ToggleLeft, ToggleRight,
+  CalendarCheck, CalendarX, X, Eye, Check,
+} from 'lucide-react';
+import API from '../api';
+import './AgendaSecretaire.css';
 
-const generateTimeSlots = (debut, fin, duree) => {
+/* ── helpers ─────────────────────────────────────── */
+const pad = n => String(n).padStart(2, '0');
+
+function generateSlots(debut, fin, duree) {
   const slots = [];
-  let current = debut;
-  while (current < fin) {
-    const [h, m] = current.split(':').map(Number);
-    const nextH = Math.floor((h * 60 + m + duree) / 60);
-    const nextM = (h * 60 + m + duree) % 60;
-    const next = `${String(nextH).padStart(2, '0')}:${String(nextM).padStart(2, '0')}`;
-    if (next <= fin) slots.push(`${current}-${next}`);
-    current = next;
+  let [h, m] = debut.split(':').map(Number);
+  const [fh, fm] = fin.split(':').map(Number);
+  const finMin = fh * 60 + fm;
+  while (true) {
+    const startMin = h * 60 + m;
+    const endMin = startMin + duree;
+    if (endMin > finMin) break;
+    const eh = Math.floor(endMin / 60), em = endMin % 60;
+    slots.push(`${pad(h)}:${pad(m)} – ${pad(eh)}:${pad(em)}`);
+    h = eh; m = em;
   }
   return slots;
-};
+}
 
-const withSlots = (s) => ({
-  ...s,
-  creneauxGeneres: (s.heureDebut && s.heureFin && s.dureeConsultation)
-    ? generateTimeSlots(s.heureDebut, s.heureFin, s.dureeConsultation)
-    : [],
-});
+function formatDateLabel(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  const s = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
-const AgendaSecretaire = () => {
-  const [showSlotModal, setShowSlotModal] = useState(false);
-  const [creneaux, setCreneaux] = useState([]);
-  const [loading, setLoading] = useState(true);
+function isToday(dateStr) {
+  return dateStr === new Date().toISOString().split('T')[0];
+}
 
+const DUREES = [15, 30, 45, 60, 90, 120];
+const EMPTY_FORM = { date: '', heureDebut: '09:00', heureFin: '17:00', dureeConsultation: 30, actif: true };
+
+/* ════════════════════════════════════════════════════
+   COMPONENT
+   ════════════════════════════════════════════════════ */
+export default function AgendaSecretaire() {
+  const [slots, setSlots]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm]         = useState(EMPTY_FORM);
+  const [saving, setSaving]     = useState(false);
+
+  /* load all slots (secretaire sees all) */
   useEffect(() => {
-    getSlots()
-      .then(res => {
-        setCreneaux(res.data.map(withSlots));
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    API.get('/slots')
+      .then(r => setSlots(r.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const [newSlot, setNewSlot] = useState({
-    date: '',
-    heureDebut: '',
-    heureFin: '',
-    dureeConsultation: 60,
-    actif: true,
-  });
-
-  const durees = [15, 30, 45, 60, 90, 120];
-
-  const formatDateLabel = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr + 'T12:00:00');
-    const label = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    return label.charAt(0).toUpperCase() + label.slice(1);
-  };
-
-  const isToday = (dateStr) => {
-    const today = new Date().toISOString().split('T')[0];
-    return dateStr === today;
-  };
-
-  const datesAvecCreneaux = useMemo(() => {
-    const byDate = {};
-    creneaux.forEach(c => {
-      const key = c.date || '';
+  /* group by date */
+  const byDate = useMemo(() => {
+    const map = {};
+    slots.forEach(s => {
+      const key = s.date || '';
       if (!key) return;
-      if (!byDate[key]) {
-        byDate[key] = {
-          dateStr: key,
-          dateLabel: formatDateLabel(key),
-          isToday: isToday(key),
-          creneaux: [],
-        };
-      }
-      byDate[key].creneaux.push(c);
+      if (!map[key]) map[key] = [];
+      map[key].push(s);
     });
-    return Object.values(byDate).sort((a, b) => a.dateStr.localeCompare(b.dateStr));
-  }, [creneaux]);
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, list]) => ({ date, label: formatDateLabel(date), today: isToday(date), list }));
+  }, [slots]);
 
-  const handleToggleSlot = (id) => {
-    const creneau = creneaux.find(c => c.id === id);
-    if (!creneau) return;
-    const updated = { ...creneau, actif: !creneau.actif };
-    updateSlot(id, { date: updated.date, heureDebut: updated.heureDebut, heureFin: updated.heureFin, dureeConsultation: updated.dureeConsultation, actif: updated.actif })
-      .then(() => setCreneaux(creneaux.map(c => c.id === id ? updated : c)))
-      .catch(() => alert('Erreur lors de la mise à jour'));
+  /* stats */
+  const stats = useMemo(() => ({
+    total:   slots.length,
+    actifs:  slots.filter(s => s.actif).length,
+    plages:  slots.filter(s => s.actif).reduce((n, s) => n + generateSlots(s.heureDebut || '00:00', s.heureFin || '00:00', s.dureeConsultation || 30).length, 0),
+    jours:   byDate.length,
+  }), [slots, byDate]);
+
+  /* preview in modal */
+  const preview = useMemo(() => {
+    if (!form.heureDebut || !form.heureFin || !form.dureeConsultation) return [];
+    return generateSlots(form.heureDebut, form.heureFin, form.dureeConsultation);
+  }, [form.heureDebut, form.heureFin, form.dureeConsultation]);
+
+  /* toggle actif */
+  const handleToggle = async slot => {
+    const updated = { ...slot, actif: !slot.actif };
+    try {
+      await API.put(`/slots/${slot.id}`, updated);
+      setSlots(prev => prev.map(s => s.id === slot.id ? updated : s));
+    } catch { alert('Erreur lors de la mise à jour'); }
   };
 
-  const handleDeleteSlot = (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce créneau ?')) {
-      deleteSlot(id)
-        .then(() => setCreneaux(creneaux.filter(c => c.id !== id)))
-        .catch(() => alert('Erreur lors de la suppression'));
-    }
+  /* delete */
+  const handleDelete = async id => {
+    if (!window.confirm('Supprimer ce créneau ?')) return;
+    try {
+      await API.delete(`/slots/${id}`);
+      setSlots(prev => prev.filter(s => s.id !== id));
+    } catch { alert('Erreur lors de la suppression'); }
   };
 
-  const handleAddSlot = (e) => {
+  /* create */
+  const handleSubmit = async e => {
     e.preventDefault();
-    const payload = {
-      date: newSlot.date,
-      heureDebut: newSlot.heureDebut,
-      heureFin: newSlot.heureFin,
-      dureeConsultation: newSlot.dureeConsultation,
-      actif: newSlot.actif,
-    };
-    createSlot(payload)
-      .then(res => {
-        setCreneaux([...creneaux, withSlots(res.data)]);
-        setNewSlot({ date: '', heureDebut: '', heureFin: '', dureeConsultation: 60, actif: true });
-        setShowSlotModal(false);
-      })
-      .catch(() => alert('Erreur lors de la création du créneau'));
+    setSaving(true);
+    try {
+      const res = await API.post('/slots', {
+        date: form.date,
+        heureDebut: form.heureDebut,
+        heureFin: form.heureFin,
+        dureeConsultation: Number(form.dureeConsultation),
+        actif: form.actif,
+      });
+      setSlots(prev => [...prev, res.data]);
+      setForm(EMPTY_FORM);
+      setShowModal(false);
+    } catch { alert('Erreur lors de la création'); }
+    finally { setSaving(false); }
   };
 
-  const stats = {
-    creneauxActifs:      creneaux.filter(c => c.actif).length,
-    creneauxTotal:       creneaux.length,
-    creneauxDisponibles: creneaux.filter(c => c.actif).reduce((acc, c) => acc + c.creneauxGeneres.length, 0),
-    joursCouverts:       datesAvecCreneaux.length,
-  };
-
-  if (loading) return <div className="page-header"><p style={{ padding: '2rem' }}>Chargement...</p></div>;
-
+  /* ── render ───────────────────────────────────── */
   return (
-    <>
-      <div className="page-header">
+    <div className="ag">
+
+      {/* Header */}
+      <div className="ag-header">
         <div>
-          <h1 className="page-title">
-            <i className="fas fa-calendar-alt"></i> Gestion de l'Agenda
-          </h1>
-          <p className="page-description">
-            Consultez et gérez les créneaux horaires disponibles pour les consultations
-          </p>
+          <h1 className="ag-title">Gestion des Créneaux</h1>
+          <p className="ag-sub">Configurez les disponibilités pour les rendez-vous du cabinet</p>
         </div>
-        <div className="header-actions">
-          <button className="btn-primary" onClick={() => setShowSlotModal(true)}>
-            <i className="fas fa-plus"></i> Nouveau créneau
-          </button>
+        <button className="ag-btn-new" onClick={() => setShowModal(true)}>
+          <Plus size={16} /> Nouveau créneau
+        </button>
+      </div>
+
+      {/* KPI strip */}
+      <div className="ag-kpis">
+        <div className="ag-kpi ag-kpi-blue">
+          <div className="ag-kpi-ic"><CalendarDays size={18} /></div>
+          <div><div className="ag-kpi-n">{stats.total}</div><div className="ag-kpi-l">Créneaux configurés</div></div>
+        </div>
+        <div className="ag-kpi ag-kpi-green">
+          <div className="ag-kpi-ic"><CalendarCheck size={18} /></div>
+          <div><div className="ag-kpi-n">{stats.actifs}</div><div className="ag-kpi-l">Créneaux actifs</div></div>
+        </div>
+        <div className="ag-kpi ag-kpi-amber">
+          <div className="ag-kpi-ic"><Clock size={18} /></div>
+          <div><div className="ag-kpi-n">{stats.plages}</div><div className="ag-kpi-l">Plages réservables</div></div>
+        </div>
+        <div className="ag-kpi ag-kpi-violet">
+          <div className="ag-kpi-ic"><CalendarDays size={18} /></div>
+          <div><div className="ag-kpi-n">{stats.jours}</div><div className="ag-kpi-l">Jours couverts</div></div>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="agenda-stats">
-        <div className="stat-box">
-          <div className="stat-icon primary"><i className="fas fa-clock"></i></div>
-          <div className="stat-info"><h3>{stats.creneauxTotal}</h3><p>Créneaux configurés</p></div>
+      {/* Content */}
+      {loading ? (
+        <div className="ag-loading">Chargement…</div>
+      ) : byDate.length === 0 ? (
+        <div className="ag-empty">
+          <CalendarX size={40} className="ag-empty-ic" />
+          <h3>Aucun créneau configuré</h3>
+          <p>Cliquez sur « Nouveau créneau » pour commencer.</p>
         </div>
-        <div className="stat-box">
-          <div className="stat-icon success"><i className="fas fa-check-circle"></i></div>
-          <div className="stat-info"><h3>{stats.creneauxActifs}</h3><p>Créneaux actifs</p></div>
-        </div>
-        <div className="stat-box">
-          <div className="stat-icon warning"><i className="fas fa-calendar-check"></i></div>
-          <div className="stat-info"><h3>{stats.creneauxDisponibles}</h3><p>Plages réservables</p></div>
-        </div>
-        <div className="stat-box">
-          <div className="stat-icon info"><i className="fas fa-calendar-week"></i></div>
-          <div className="stat-info"><h3>{stats.joursCouverts}</h3><p>Jours à venir</p></div>
-        </div>
-      </div>
-
-      {/* Timeline des créneaux par date */}
-      <div className="agenda-timeline">
-        {datesAvecCreneaux.length === 0 ? (
-          <div className="empty-agenda">
-            <i className="fas fa-calendar-times"></i>
-            <h3>Aucun créneau configuré</h3>
-            <p>Ajoutez des créneaux horaires pour les voir apparaître ici.</p>
-          </div>
-        ) : (
-          datesAvecCreneaux.map((dateInfo, index) => (
-            <div key={index} className={`date-group ${dateInfo.isToday ? 'today' : ''}`}>
-              <div className="date-header">
-                <div className="date-indicator">
-                  {dateInfo.isToday && <span className="today-badge">Aujourd'hui</span>}
-                  <h2 className="date-title">{dateInfo.dateLabel}</h2>
+      ) : (
+        <div className="ag-list">
+          {byDate.map(({ date, label, today, list }) => (
+            <div key={date} className={`ag-group${today ? ' ag-today' : ''}`}>
+              <div className="ag-group-head">
+                <div className="ag-group-left">
+                  {today && <span className="ag-today-pill">Aujourd'hui</span>}
+                  <span className="ag-group-date">{label}</span>
                 </div>
-                <span className="date-slots-count">
-                  {dateInfo.creneaux.reduce((acc, c) => acc + c.creneauxGeneres.length, 0)} créneaux
+                <span className="ag-group-count">
+                  {list.reduce((n, s) => n + generateSlots(s.heureDebut || '00:00', s.heureFin || '00:00', s.dureeConsultation || 30).length, 0)} plages
                 </span>
               </div>
 
-              <div className="date-creneaux">
-                {dateInfo.creneaux.map(creneau => (
-                  <div key={creneau.id} className="creneau-row">
-                    <div className="creneau-time-block">
-                      <div className="creneau-time-range">
-                        <i className="fas fa-clock"></i>
-                        <span>{creneau.heureDebut} - {creneau.heureFin}</span>
+              <div className="ag-cards">
+                {list.map(slot => {
+                  const plages = generateSlots(slot.heureDebut || '00:00', slot.heureFin || '00:00', slot.dureeConsultation || 30);
+                  return (
+                    <div key={slot.id} className={`ag-card${slot.actif ? '' : ' ag-card-off'}`}>
+                      <div className="ag-card-top">
+                        <div className="ag-card-time">
+                          <Clock size={14} />
+                          <strong>{slot.heureDebut} – {slot.heureFin}</strong>
+                          <span className="ag-card-dur">{slot.dureeConsultation} min / RDV</span>
+                        </div>
+                        <div className="ag-card-actions">
+                          <button
+                            className={`ag-toggle${slot.actif ? ' on' : ''}`}
+                            onClick={() => handleToggle(slot)}
+                            title={slot.actif ? 'Désactiver' : 'Activer'}
+                          >
+                            {slot.actif ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                          </button>
+                          <button className="ag-del" onClick={() => handleDelete(slot.id)} title="Supprimer">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
-                      <span className="creneau-duree">{creneau.dureeConsultation} min / consultation</span>
-                    </div>
 
-                    <div className="creneau-slots-list">
-                      {creneau.creneauxGeneres.map((slot, idx) => (
-                        <span key={idx} className="slot-chip">{slot}</span>
-                      ))}
+                      <div className="ag-chips">
+                        {plages.length === 0
+                          ? <span className="ag-chip-none">Aucune plage générée</span>
+                          : plages.map((p, i) => (
+                              <span key={i} className={`ag-chip${slot.actif ? '' : ' ag-chip-off'}`}>{p}</span>
+                            ))
+                        }
+                      </div>
                     </div>
-
-                    <div className="creneau-actions">
-                      <button
-                        className={`toggle-btn ${creneau.actif ? 'active' : ''}`}
-                        onClick={() => handleToggleSlot(creneau.id)}
-                        title={creneau.actif ? 'Désactiver' : 'Activer'}
-                      >
-                        <i className={`fas fa-${creneau.actif ? 'toggle-on' : 'toggle-off'}`}></i>
-                      </button>
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDeleteSlot(creneau.id)}
-                        title="Supprimer"
-                      >
-                        <i className="fas fa-trash-alt"></i>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Modal Ajout Créneau */}
-      {showSlotModal && (
-        <div className="modal-overlay" onClick={() => setShowSlotModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2><i className="fas fa-plus-circle"></i> Nouveau créneau horaire</h2>
-              <button className="btn-close" onClick={() => setShowSlotModal(false)}>
-                <i className="fas fa-times"></i>
-              </button>
+      {/* ── Modal ── */}
+      {showModal && (
+        <>
+          <div className="ag-scrim" onClick={() => setShowModal(false)} />
+          <div className="ag-modal">
+            <div className="ag-modal-head">
+              <div>
+                <h2>Nouveau créneau</h2>
+                <p>Configurez une plage horaire pour les rendez-vous</p>
+              </div>
+              <button className="ag-modal-close" onClick={() => setShowModal(false)}><X size={16} /></button>
             </div>
-            <form onSubmit={handleAddSlot}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label><i className="fas fa-calendar-day"></i> Date *</label>
-                  <input
-                    type="date"
-                    value={newSlot.date}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setNewSlot({ ...newSlot, date: e.target.value })}
-                    required
-                  />
-                </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label><i className="fas fa-clock"></i> Heure de début *</label>
-                    <input
-                      type="time"
-                      value={newSlot.heureDebut}
-                      onChange={(e) => setNewSlot({ ...newSlot, heureDebut: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label><i className="fas fa-clock"></i> Heure de fin *</label>
-                    <input
-                      type="time"
-                      value={newSlot.heureFin}
-                      onChange={(e) => setNewSlot({ ...newSlot, heureFin: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label><i className="fas fa-hourglass-half"></i> Durée d'une consultation *</label>
-                  <select
-                    value={newSlot.dureeConsultation}
-                    onChange={(e) => setNewSlot({ ...newSlot, dureeConsultation: Number(e.target.value) })}
-                    required
-                  >
-                    {durees.map(duree => (
-                      <option key={duree} value={duree}>{duree} minutes</option>
-                    ))}
-                  </select>
-                  <small>Les créneaux seront automatiquement divisés selon cette durée</small>
-                </div>
-
-                <div className="form-group">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={newSlot.actif}
-                      onChange={(e) => setNewSlot({ ...newSlot, actif: e.target.checked })}
-                    />
-                    <span>Activer immédiatement ce créneau</span>
-                  </label>
-                </div>
-
-                {newSlot.heureDebut && newSlot.heureFin && newSlot.dureeConsultation && (
-                  <div className="preview-box">
-                    <h4><i className="fas fa-eye"></i> Aperçu des créneaux générés :</h4>
-                    <div className="preview-slots">
-                      {generateTimeSlots(newSlot.heureDebut, newSlot.heureFin, newSlot.dureeConsultation).map((slot, index) => (
-                        <span key={index} className="preview-tag">{slot}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            <form onSubmit={handleSubmit} className="ag-modal-body">
+              <div className="ag-field">
+                <label>Date <span className="ag-req">*</span></label>
+                <input
+                  type="date"
+                  required
+                  min={new Date().toISOString().split('T')[0]}
+                  value={form.date}
+                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                />
               </div>
 
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowSlotModal(false)}>
-                  <i className="fas fa-times"></i> Annuler
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-check"></i> Créer le créneau
+              <div className="ag-row2">
+                <div className="ag-field">
+                  <label>Heure de début <span className="ag-req">*</span></label>
+                  <input type="time" required value={form.heureDebut}
+                    onChange={e => setForm(f => ({ ...f, heureDebut: e.target.value }))} />
+                </div>
+                <div className="ag-field">
+                  <label>Heure de fin <span className="ag-req">*</span></label>
+                  <input type="time" required value={form.heureFin}
+                    onChange={e => setForm(f => ({ ...f, heureFin: e.target.value }))} />
+                </div>
+              </div>
+
+              <div className="ag-field">
+                <label>Durée par consultation <span className="ag-req">*</span></label>
+                <select value={form.dureeConsultation}
+                  onChange={e => setForm(f => ({ ...f, dureeConsultation: Number(e.target.value) }))}>
+                  {DUREES.map(d => <option key={d} value={d}>{d} minutes</option>)}
+                </select>
+              </div>
+
+              <label className="ag-check">
+                <input type="checkbox" checked={form.actif}
+                  onChange={e => setForm(f => ({ ...f, actif: e.target.checked }))} />
+                <span>Activer ce créneau immédiatement</span>
+              </label>
+
+              {preview.length > 0 && (
+                <div className="ag-preview">
+                  <div className="ag-preview-head"><Eye size={13} /> {preview.length} plages générées</div>
+                  <div className="ag-preview-chips">
+                    {preview.map((p, i) => <span key={i} className="ag-chip">{p}</span>)}
+                  </div>
+                </div>
+              )}
+
+              <div className="ag-modal-ft">
+                <button type="button" className="ag-btn-cancel" onClick={() => setShowModal(false)}>Annuler</button>
+                <button type="submit" className="ag-btn-save" disabled={saving}>
+                  {saving ? 'Enregistrement…' : <><Check size={14} /> Créer le créneau</>}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </>
       )}
-    </>
+    </div>
   );
-};
-
-export default AgendaSecretaire;
+}
