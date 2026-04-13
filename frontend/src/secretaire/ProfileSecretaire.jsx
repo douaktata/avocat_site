@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   User, Mail, Phone, CreditCard, MapPin, Calendar,
   Lock, Key, Eye, EyeOff, Save, ShieldCheck, Camera,
-  CheckCircle, AlertCircle,
+  CheckCircle, AlertCircle, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { getUser, updateUser, changePassword, uploadPhoto } from '../api';
@@ -12,12 +12,12 @@ const API_BASE = 'http://localhost:8081';
 
 export default function ProfileSecretaire() {
   const { user: authUser, loginUser } = useAuth();
-  const [profile,    setProfile]    = useState(null);
-  const [loading,    setLoading]    = useState(true);
-  const [saving,     setSaving]     = useState(false);
-  const [savingPwd,  setSavingPwd]  = useState(false);
-  const [msg,        setMsg]        = useState(null);
-  const [msgPwd,     setMsgPwd]     = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savingPwd, setSavingPwd] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [msgPwd, setMsgPwd] = useState(null);
   const fileRef = useRef();
 
   const [form, setForm] = useState({
@@ -32,12 +32,12 @@ export default function ProfileSecretaire() {
       .then(({ data }) => {
         setProfile(data);
         setForm({
-          nom:            data.nom            || '',
-          prenom:         data.prenom         || '',
-          email:          data.email          || '',
-          tel:            data.tel            || '',
-          adresse:        data.adresse        || '',
-          CIN:            data.CIN            || '',
+          nom: data.nom || '',
+          prenom: data.prenom || '',
+          email: data.email || '',
+          tel: data.tel || '',
+          adresse: data.adresse || '',
+          CIN: data.CIN || '',
           date_naissance: data.date_naissance || '',
         });
       })
@@ -98,58 +98,52 @@ export default function ProfileSecretaire() {
     } finally { setSaving(false); }
   };
 
-  const photoSrc  = profile?.photo_url ? `${API_BASE}${profile.photo_url}?t=${Date.now()}` : null;
-  const initials  = `${(profile?.prenom || '')[0] || ''}${(profile?.nom || '')[0] || ''}`.toUpperCase() || '?';
-  const fullName  = `${profile?.prenom || ''} ${profile?.nom || ''}`.trim() || 'Utilisateur';
-  const roleName  = [...(profile?.roles || [])].join(', ') || '';
+  const photoSrc = profile?.photo_url ? `${API_BASE}${profile.photo_url}?t=${Date.now()}` : null;
+  const initials = `${(profile?.prenom || '')[0] || ''}${(profile?.nom || '')[0] || ''}`.toUpperCase() || '?';
+  const fullName = `${profile?.prenom || ''} ${profile?.nom || ''}`.trim() || 'Utilisateur';
+  const roleName = [...(profile?.roles || [])].join(', ') || '';
 
-  if (loading) return <div className="pf-loading">Chargement…</div>;
+  if (loading) return (
+    <div className="pf-loading">
+      <div className="pf-spinner" />
+      <span>Chargement du profil…</span>
+    </div>
+  );
 
   return (
     <div className="pf">
 
-      {/* Header */}
+      {/* HEADER BANNER */}
       <div className="pf-header">
+        <div className="pf-header-blob" />
         <div>
-          <h1 className="pf-title">Mon profil</h1>
-          <p className="pf-sub">Gérez vos informations personnelles et votre sécurité</p>
+          <div className="pf-eyebrow"><Sparkles size={11} /> Mon compte</div>
+          <h1 className="pf-title">Mon <em>profil</em></h1>
+          <p className="pf-subtitle">Gérez vos informations personnelles et votre sécurité</p>
         </div>
-      </div>
-
-      {/* Identity banner */}
-      <div className="pf-identity">
-        <div className="pf-avatar-wrap" onClick={() => fileRef.current.click()} title="Changer la photo">
-          <div className="pf-avatar">
-            {photoSrc
-              ? <img src={photoSrc} alt="avatar" />
-              : <span>{initials}</span>
-            }
+        <div className="pf-user-card">
+          <div className="pf-avatar-wrap" onClick={() => fileRef.current.click()} title="Changer la photo">
+            <div className="pf-avatar">
+              {photoSrc ? <img src={photoSrc} alt="avatar" /> : <span>{initials}</span>}
+            </div>
+            <div className="pf-avatar-cam"><Camera size={12} /></div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoChange} />
           </div>
-          <div className="pf-avatar-cam"><Camera size={13} /></div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={handlePhotoChange}
-          />
-        </div>
-        <div className="pf-identity-text">
-          <div className="pf-identity-name">{fullName}</div>
-          {roleName && <div className="pf-identity-role">{roleName}</div>}
+          <div className="pf-user-info">
+            <div className="pf-user-name">{fullName}</div>
+            {roleName && <div className="pf-user-role">{roleName}</div>}
+          </div>
         </div>
       </div>
 
+      {/* CARDS */}
       <div className="pf-cards">
 
-        {/* Personal info */}
-        <div className="pf-card">
+        {/* Personal info - LEFT */}
+        <div className="pf-card blue">
           <div className="pf-card-head">
-            <div className="pf-card-ic pf-ic-blue"><User size={16} /></div>
-            <div>
-              <div className="pf-card-title">Informations personnelles</div>
-              <div className="pf-card-sub">Modifiez vos coordonnées et informations de contact</div>
-            </div>
+            <div className="pf-card-ic"><User size={18} /></div>
+            <div className="pf-card-title">Informations personnelles</div>
           </div>
           <div className="pf-card-body">
             {msg && (
@@ -219,14 +213,11 @@ export default function ProfileSecretaire() {
           </div>
         </div>
 
-        {/* Password */}
-        <div className="pf-card">
+        {/* Password - RIGHT */}
+        <div className="pf-card violet">
           <div className="pf-card-head">
-            <div className="pf-card-ic pf-ic-violet"><Lock size={16} /></div>
-            <div>
-              <div className="pf-card-title">Sécurité du compte</div>
-              <div className="pf-card-sub">Changez votre mot de passe pour sécuriser votre compte</div>
-            </div>
+            <div className="pf-card-ic"><Lock size={18} /></div>
+            <div className="pf-card-title">Sécurité du compte</div>
           </div>
           <div className="pf-card-body">
             {msgPwd && (
@@ -238,9 +229,9 @@ export default function ProfileSecretaire() {
             <form onSubmit={handleChangePassword}>
               <div className="pf-pwd-fields">
                 {[
-                  { key: 'currentPassword', label: 'Mot de passe actuel',         Icon: Lock,  placeholder: 'Votre mot de passe actuel' },
-                  { key: 'newPassword',     label: 'Nouveau mot de passe',         Icon: Key,   placeholder: 'Minimum 6 caractères' },
-                  { key: 'confirm',         label: 'Confirmer le nouveau mot de passe', Icon: ShieldCheck, placeholder: 'Répéter le nouveau mot de passe' },
+                  { key: 'currentPassword', label: 'Mot de passe actuel', Icon: Lock, placeholder: 'Votre mot de passe actuel' },
+                  { key: 'newPassword', label: 'Nouveau mot de passe', Icon: Key, placeholder: 'Minimum 6 caractères' },
+                  { key: 'confirm', label: 'Confirmer le mot de passe', Icon: ShieldCheck, placeholder: 'Répéter le mot de passe' },
                 ].map(({ key, label, Icon, placeholder }) => (
                   <div className="pf-field" key={key}>
                     <label>{label}</label>
@@ -254,11 +245,7 @@ export default function ProfileSecretaire() {
                         required
                         minLength={key !== 'currentPassword' ? 6 : undefined}
                       />
-                      <button
-                        type="button"
-                        className="pf-eye"
-                        onClick={() => setShowPwd(s => ({ ...s, [key]: !s[key] }))}
-                      >
+                      <button type="button" className="pf-eye" onClick={() => setShowPwd(s => ({ ...s, [key]: !s[key] }))}>
                         {showPwd[key] ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>

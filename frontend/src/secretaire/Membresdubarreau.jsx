@@ -1,283 +1,241 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { getUsersByRole } from '../api';
+import {
+  Gavel, Search, X, Phone, Mail, MapPin, Eye, UserX, Sparkles,
+  Scale, Building2, BadgeCheck, Hash,
+} from 'lucide-react';
+import { getLawyers } from '../api';
 import './Membresdubarreau.css';
 
-const MembresDuBarreau = () => {
-  const navigate = useNavigate();
+const API_BASE = 'http://localhost:8081';
 
-  const [membres, setMembres] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const mapLawyer = l => ({
+  id:               l.idl,
+  nom:              l.nom    || '',
+  prenom:           l.prenom || '',
+  email:            l.email  || '',
+  tel:              l.tel    || '—',
+  adresse:          l.adresse || '—',
+  statut:           l.statut  || 'Actif',
+  specialite:       l.specialite        || '—',
+  barreau:          l.bureau            || '—',
+  region:           l.region            || '—',
+  numBarreau:       l.bar_registration_num || '—',
+  telBureau:        l.tel_bureau        || '—',
+  photoUrl:         l.photo_url ? `${API_BASE}${l.photo_url}` : null,
+});
+
+export default function MembresDuBarreau() {
+  const navigate = useNavigate();
+  const [membres,      setMembres]      = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [searchTerm,   setSearchTerm]   = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [preview,      setPreview]      = useState(null);
 
   useEffect(() => {
-    getUsersByRole('AVOCAT')
-      .then(res => {
-        setMembres(res.data.map(u => ({
-          id: u.idu,
-          nom: u.nom || '',
-          prenom: u.prenom || '',
-          titre: `Maître ${u.prenom || ''} ${u.nom || ''}`.trim(),
-          specialite: '—',
-          barreau: '—',
-          anneeInscription: '—',
-          email: u.email || '',
-          tel: u.tel || '—',
-          adresse: u.adresse || '—',
-          statut: u.statut || 'Actif',
-          affairesEnCours: [],
-          audiences: [],
-          formations: [],
-        })));
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Impossible de charger les membres du barreau');
-        setLoading(false);
-      });
+    getLawyers()
+      .then(res => setMembres((res.data || []).map(mapLawyer)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [selectedMembre, setSelectedMembre] = useState(null);
-  const [openSections, setOpenSections] = useState({});
-
-  const filteredMembres = membres.filter(membre => {
-    const fullName = `${membre.prenom} ${membre.nom}`.toLowerCase();
-    const matchesSearch =
-      fullName.includes(searchTerm.toLowerCase()) ||
-      (membre.specialite && membre.specialite.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      membre.tel.includes(searchTerm);
-    const matchesStatus = statusFilter === '' || membre.statut.toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
+  const filtered = membres.filter(m => {
+    const full = `${m.prenom} ${m.nom}`.toLowerCase();
+    const matchSearch =
+      full.includes(searchTerm.toLowerCase()) ||
+      m.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.specialite.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.tel.includes(searchTerm);
+    const matchStatus = !statusFilter || m.statut.toLowerCase() === statusFilter;
+    return matchSearch && matchStatus;
   });
 
-  const handleOpenModal = (membre) => {
-    setSelectedMembre(membre);
-    setOpenSections({});
-  };
-
-  const handleCloseModal = () => {
-    setSelectedMembre(null);
-    setOpenSections({});
-  };
-
-  const handleViewDetail = (membreId) => {
-    navigate(`/secretaire/barreau/${membreId}`);
-  };
-
-  const toggleSection = (section) => {
-    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const getStatusClass = (status) => {
-    const classes = { Actif: 'status-actif', Inactif: 'status-inactif' };
-    return classes[status] || '';
-  };
-
   const stats = {
-    total: membres.length,
-    actifs: membres.filter(m => m.statut === 'Actif').length,
-    affaires: 0,
-    audiences: 0,
+    total:   membres.length,
+    actifs:  membres.filter(m => m.statut === 'Actif').length,
+    regions: new Set(membres.map(m => m.region).filter(r => r !== '—')).size,
   };
 
-  if (loading) return <div className="barreau-page"><p style={{ padding: '2rem' }}>Chargement...</p></div>;
-  if (error) return <div className="barreau-page"><p style={{ padding: '2rem', color: 'red' }}>{error}</p></div>;
+  const ini = m => `${(m.prenom||'?')[0]}${(m.nom||'?')[0]}`.toUpperCase();
 
   return (
-    <div className="barreau-page">
+    <div className="mb">
 
-      {/* ── Header ── */}
-      <div className="barreau-header">
-        <div>
-          <h1 className="page-title">Membres du Barreau</h1>
-          <p className="page-description">Annuaire des avocats et confrères du barreau</p>
+      {/* ── HEADER BANNER ── */}
+      <div className="mb-header">
+        <div className="mb-header-blob" />
+        <div className="mb-header-top">
+          <div className="mb-eyebrow"><Sparkles size={11} /> Annuaire du Barreau</div>
+          <h1 className="mb-title">Membres <em>du Barreau</em></h1>
+          <p className="mb-subtitle">Avocats inscrits et confrères du cabinet</p>
         </div>
-        <button className="btn-add-client">
-          <i className="fas fa-user-plus"></i> Ajouter un membre
-        </button>
-      </div>
-
-      {/* ── KPI Row ── */}
-      <div className="barreau-kpi">
-        <div className="kpi-item kpi-total">
-          <i className="fas fa-gavel"></i>
-          <div><span>{stats.total}</span><p>Total</p></div>
-        </div>
-        <div className="kpi-item kpi-actif">
-          <i className="fas fa-user-check"></i>
-          <div><span>{stats.actifs}</span><p>Actifs</p></div>
-        </div>
-        <div className="kpi-item kpi-affaires">
-          <i className="fas fa-folder-open"></i>
-          <div><span>{stats.affaires}</span><p>Affaires</p></div>
-        </div>
-        <div className="kpi-item kpi-audiences">
-          <i className="fas fa-calendar-alt"></i>
-          <div><span>{stats.audiences}</span><p>Audiences</p></div>
+        <div className="mb-header-divider" />
+        <div className="mb-header-stats">
+          <div className="mb-hstat">
+            <span className="mb-hstat-number">{stats.total}</span>
+            <span className="mb-hstat-label">Total</span>
+          </div>
+          <div className="mb-hstat-sep" />
+          <div className="mb-hstat">
+            <span className="mb-hstat-number mb-hstat-green">{stats.actifs}</span>
+            <span className="mb-hstat-label">Actifs</span>
+          </div>
+          <div className="mb-hstat-sep" />
+          <div className="mb-hstat">
+            <span className="mb-hstat-number mb-hstat-violet">{stats.regions}</span>
+            <span className="mb-hstat-label">Régions</span>
+          </div>
         </div>
       </div>
 
-      {/* ── Search & Filter ── */}
-      <div className="barreau-toolbar">
-        <div className="search-wrap">
-          <i className="fas fa-search"></i>
+      {/* ── TOOLBAR ── */}
+      <div className="mb-toolbar">
+        <div className="mb-search">
+          <Search size={15} className="mb-search-ic" />
           <input
             type="text"
-            placeholder="Rechercher par nom..."
+            placeholder="Rechercher par nom, spécialité…"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
           />
           {searchTerm && (
-            <button className="clear-btn" onClick={() => setSearchTerm('')}>
-              <i className="fas fa-times"></i>
-            </button>
+            <button className="mb-clear" onClick={() => setSearchTerm('')}><X size={14} /></button>
           )}
         </div>
-        <div className="filter-wrap">
-          <i className="fas fa-filter"></i>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="">Tous les statuts</option>
-            <option value="actif">Actif</option>
-            <option value="inactif">Inactif</option>
-          </select>
-        </div>
-        <span className="results-count">{filteredMembres.length} membre{filteredMembres.length !== 1 ? 's' : ''}</span>
+
+        <select className="mb-sel" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="">Tous les statuts</option>
+          <option value="actif">Actif</option>
+          <option value="inactif">Inactif</option>
+        </select>
+
+        <span className="mb-count">{filtered.length} membre{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
-      {/* ── Membres Grid ── */}
-      {filteredMembres.length > 0 ? (
-        <div className="barreau-grid">
-          {filteredMembres.map(membre => (
-            <div key={membre.id} className="membre-card">
-              <div className="mcard-top">
-                <div className="mcard-avatar">
-                  {membre.prenom.charAt(0)}{membre.nom.charAt(0)}
-                </div>
-                <div className="mcard-identity">
-                  <h3>{membre.titre}</h3>
-                  <span className={`mcard-status ${getStatusClass(membre.statut)}`}>
-                    {membre.statut}
-                  </span>
-                </div>
-              </div>
-
-              <div className="minfo-row" style={{ padding: '0.75rem 1.5rem', borderBottom: '1px solid #f3f4f6' }}>
-                <i className="fas fa-balance-scale"></i> <span>{membre.specialite}</span>
-              </div>
-
-              <div className="mcard-info">
-                <div className="minfo-row">
-                  <i className="fas fa-envelope"></i>
-                  <span>{membre.email}</span>
-                </div>
-                <div className="minfo-row">
-                  <i className="fas fa-phone"></i>
-                  <span>{membre.tel}</span>
-                </div>
-              </div>
-
-              <div className="mcard-actions">
-                <button
-                  className="mcard-btn mcard-btn-primary"
-                  onClick={() => handleViewDetail(membre.id)}
-                >
-                  <i className="fas fa-eye"></i> Détails
-                </button>
-                <button
-                  className="mcard-btn mcard-btn-secondary"
-                  onClick={() => handleOpenModal(membre)}
-                >
-                  <i className="fas fa-info-circle"></i> Aperçu
-                </button>
-              </div>
-            </div>
-          ))}
+      {/* ── CONTENT ── */}
+      {loading ? (
+        <div className="mb-loading">
+          <div className="mb-spinner" />
+          <span>Chargement des membres…</span>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="mb-empty">
+          <div className="mb-empty-icon"><UserX size={28} /></div>
+          <p className="mb-empty-title">Aucun membre trouvé</p>
+          <p className="mb-empty-sub">Essayez de modifier vos filtres</p>
         </div>
       ) : (
-        <div className="no-results">
-          <i className="fas fa-search"></i>
-          <p>Aucun membre trouvé</p>
-          <small>Essayez de modifier vos filtres de recherche</small>
+        <div className="mb-grid">
+          {filtered.map(m => {
+            const isActif = m.statut === 'Actif';
+            return (
+              <div key={m.id} className="mb-card">
+                <div className="mb-card-bar" />
+                <div className="mb-card-body">
+
+                  <div className="mb-card-top">
+                    <div className="mb-avatar">
+                      {m.photoUrl ? <img src={m.photoUrl} alt="" /> : ini(m)}
+                    </div>
+                    <div className="mb-card-id">
+                      <div className="mb-name">Me. {m.prenom} {m.nom}</div>
+                      <div className="mb-card-badges">
+                        <span className="mb-spec-chip">{m.specialite !== '—' ? m.specialite : 'Avocat'}</span>
+                        <span className={`mb-status${isActif ? ' mb-status-on' : ' mb-status-off'}`}>
+                          {m.statut}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-info">
+                    {m.barreau !== '—' && (
+                      <div className="mb-info-row"><Building2 size={12} /><span>{m.barreau}</span></div>
+                    )}
+                    <div className="mb-info-row"><Phone size={12} /><span>{m.tel}</span></div>
+                    <div className="mb-info-row"><Mail size={12} /><span className="mb-email">{m.email}</span></div>
+                  </div>
+
+                  <div className="mb-card-footer">
+                    <button className="mb-btn-ghost" onClick={() => setPreview(m)}>
+                      <Eye size={13} /> Aperçu
+                    </button>
+                    <button className="mb-btn-primary" onClick={() => navigate(`/secretaire/barreau/${m.id}`)}>
+                      Voir le profil
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* ── Modal aperçu rapide ── */}
-      {selectedMembre && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-panel" onClick={e => e.stopPropagation()}>
-
-            <div className="modal-hero">
-              <div className="modal-avatar">
-                {selectedMembre.prenom.charAt(0)}{selectedMembre.nom.charAt(0)}
+      {/* ── PREVIEW MODAL ── */}
+      {preview && createPortal(
+        <div className="mb-scrim" onClick={() => setPreview(null)}>
+          <div className="mb-modal" onClick={e => e.stopPropagation()}>
+            <div className="mb-modal-head">
+              <div className="mb-modal-head-icon">
+                <Gavel size={18} />
               </div>
-              <div className="modal-identity">
-                <h2>{selectedMembre.titre}</h2>
-                <span className={`mcard-status ${getStatusClass(selectedMembre.statut)}`}>
-                  {selectedMembre.statut}
-                </span>
+              <div className="mb-modal-head-text">
+                <h2>Me. {preview.prenom} {preview.nom}</h2>
+                <p>{preview.specialite !== '—' ? preview.specialite : 'Avocat'}</p>
               </div>
-              <button className="modal-close-btn" onClick={handleCloseModal}>
-                <i className="fas fa-times"></i>
-              </button>
+              <button className="mb-modal-close" onClick={() => setPreview(null)}><X size={14} /></button>
             </div>
-
-            <div className="modal-body-scroll">
-              <div className="modal-info-grid">
-                <div className="minfo-item">
-                  <i className="fas fa-phone"></i>
-                  <div><label>Téléphone</label><p>{selectedMembre.tel}</p></div>
-                </div>
-                <div className="minfo-item">
-                  <i className="fas fa-envelope"></i>
-                  <div><label>Email</label><p>{selectedMembre.email}</p></div>
-                </div>
-                <div className="minfo-item minfo-full">
-                  <i className="fas fa-map-marker-alt"></i>
-                  <div><label>Adresse</label><p>{selectedMembre.adresse}</p></div>
-                </div>
-              </div>
-
-              <div className="history-section">
-                <button
-                  className={`history-header ${openSections.affaires ? 'is-open' : ''}`}
-                  onClick={() => toggleSection('affaires')}
-                >
-                  <div className="history-icon" style={{ background: 'linear-gradient(135deg, #dbeafe, #93c5fd)', color: '#1e3a8a' }}>
-                    <i className="fas fa-folder-open"></i>
+            <div className="mb-modal-body">
+              <div className="mb-preview-grid">
+                {[
+                  [Scale,      'Spécialité',  preview.specialite],
+                  [Building2,  'Barreau',     preview.barreau],
+                  [Hash,       'N° Barreau',  preview.numBarreau],
+                  [Phone,      'Téléphone',   preview.tel],
+                  [Phone,      'Tél. bureau', preview.telBureau],
+                  [MapPin,     'Région',      preview.region],
+                ].map(([Icon, label, val]) => val !== '—' && (
+                  <div key={label} className="mb-preview-item">
+                    <div className="mb-preview-ic"><Icon size={13} /></div>
+                    <div>
+                      <label>{label}</label>
+                      <p>{val}</p>
+                    </div>
                   </div>
-                  <h3>Affaires en cours</h3>
-                  <span className="history-badge">0</span>
-                  <i className={`fas fa-chevron-${openSections.affaires ? 'up' : 'down'} chevron-icon`}></i>
-                </button>
-                {openSections.affaires && (
-                  <div className="history-content">
-                    <div className="history-empty">
-                      <i className="fas fa-folder"></i>
-                      <p>Aucune affaire en cours</p>
+                ))}
+                <div className="mb-preview-item mb-preview-full">
+                  <div className="mb-preview-ic"><Mail size={13} /></div>
+                  <div>
+                    <label>Email</label>
+                    <p>{preview.email}</p>
+                  </div>
+                </div>
+                {preview.adresse !== '—' && (
+                  <div className="mb-preview-item mb-preview-full">
+                    <div className="mb-preview-ic"><MapPin size={13} /></div>
+                    <div>
+                      <label>Adresse</label>
+                      <p>{preview.adresse}</p>
                     </div>
                   </div>
                 )}
               </div>
             </div>
-
-            <div className="modal-footer">
-              <button className="mfooter-btn mfooter-close" onClick={handleCloseModal}>
-                <i className="fas fa-times"></i> Fermer
-              </button>
+            <div className="mb-modal-ft">
+              <button className="mb-btn-cancel" onClick={() => setPreview(null)}>Fermer</button>
               <button
-                className="mfooter-btn mfooter-email"
-                onClick={() => { handleCloseModal(); handleViewDetail(selectedMembre.id); }}
+                className="mb-btn-save"
+                onClick={() => { setPreview(null); navigate(`/secretaire/barreau/${preview.id}`); }}
               >
-                <i className="fas fa-arrow-right"></i> Page complète
+                <BadgeCheck size={13} /> Page complète
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
-};
-
-export default MembresDuBarreau;
+}

@@ -1,85 +1,88 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft, FileText, Gavel, FileSpreadsheet, Coins,
+  Landmark, Info, Hash, Download, File, Sparkles,
+  FolderX, CalendarX, Scale, Briefcase, Home, HardHat,
+  Heart, ScrollText, Folder, Users, Eye, Lock,
+  User, CalendarPlus, StickyNote, Layers, Flag,
+  CheckCircle2, Clock, Loader2, Building2, Upload,
+  AlertCircle,
+} from 'lucide-react';
 import { getCase, getDocumentsByCase, getAudiencesByCase, getTribunals, uploadDocument, downloadDocument, deleteDocument } from '../api';
 import FacturesTabSec from './FacturesTabSec';
 import SequestreTabSec from './SequestreTabSec';
-import '../avocate/Dossierdetailav.css';
 import './Dossierdetail.css';
 
-/* ─── Méta ──────────────────────────────────────────────── */
+/* ─── Meta maps ─────────────────────────────────────── */
 const TYPE_META = {
-  Divorce:    { icon: 'fa-heart-broken', color: '#ec4899', bg: '#fce7f3' },
-  Commercial: { icon: 'fa-briefcase',    color: '#3b82f6', bg: '#dbeafe' },
-  Succession: { icon: 'fa-scroll',       color: '#8b5cf6', bg: '#ede9fe' },
-  Immobilier: { icon: 'fa-home',         color: '#10b981', bg: '#d1fae5' },
-  Pénal:      { icon: 'fa-gavel',        color: '#ef4444', bg: '#fee2e2' },
-  Travail:    { icon: 'fa-hard-hat',     color: '#f59e0b', bg: '#fef3c7' },
-  Famille:    { icon: 'fa-users',        color: '#06b6d4', bg: '#cffafe' },
-  Civil:      { icon: 'fa-balance-scale',color: '#0ea5e9', bg: '#e0f2fe' },
+  Divorce:    { Icon: Heart,       color: '#ec4899', bg: '#fce7f3' },
+  Commercial: { Icon: Briefcase,   color: '#3b82f6', bg: '#dbeafe' },
+  Succession: { Icon: ScrollText,  color: '#8b5cf6', bg: '#ede9fe' },
+  Immobilier: { Icon: Home,        color: '#10b981', bg: '#d1fae5' },
+  Pénal:      { Icon: Gavel,       color: '#ef4444', bg: '#fee2e2' },
+  Travail:    { Icon: HardHat,     color: '#f59e0b', bg: '#fef3c7' },
+  Famille:    { Icon: Users,       color: '#06b6d4', bg: '#cffafe' },
+  Civil:      { Icon: Scale,       color: '#0ea5e9', bg: '#e0f2fe' },
 };
+const defaultType = { Icon: Folder, color: '#64748b', bg: '#f1f5f9' };
 
-const STATUS_MAP  = { OPEN: 'en_cours', PENDING: 'en_attente', CLOSED: 'cloture' };
 const STATUT_META = {
-  en_cours:   { label: 'En cours',   cls: 'dd-s-progress', icon: 'fa-circle-notch' },
-  en_attente: { label: 'En attente', cls: 'dd-s-waiting',  icon: 'fa-clock' },
-  cloture:    { label: 'Clôturé',    cls: 'dd-s-closed',   icon: 'fa-check-circle' },
+  en_cours:   { label: 'En cours',   cls: 'dds-s-open',    Icon: Loader2    },
+  en_attente: { label: 'En attente', cls: 'dds-s-pending',  Icon: Clock      },
+  cloture:    { label: 'Clôturé',   cls: 'dds-s-closed',  Icon: CheckCircle2 },
 };
+const STATUS_MAP = { OPEN: 'en_cours', PENDING: 'en_attente', CLOSED: 'cloture' };
+
 const PRIO_META = {
-  urgente: { label: 'Urgente', cls: 'dd-p-urgent', dot: '#ef4444' },
-  haute:   { label: 'Haute',   cls: 'dd-p-haute',  dot: '#f59e0b' },
-  normale: { label: 'Normale', cls: 'dd-p-normal', dot: '#9ca3af' },
-};
-const AUD_STATUS = {
-  SCHEDULED: { label: 'À venir',   cls: 'badge-upcoming' },
-  COMPLETED: { label: 'Effectuée', cls: 'badge-done' },
-  POSTPONED: { label: 'Reportée',  cls: 'badge-pending' },
-  CANCELLED: { label: 'Annulée',   cls: 'badge-cancelled' },
-};
-const HEARING_TYPE_LABEL = {
-  CONSULTATION: 'Consultation',
-  JUGEMENT: 'Jugement',
-  AUDIENCE: 'Audience générale',
-  EXPERTISE: 'Expertise',
-  MEDIATION: 'Médiation',
+  urgente: { label: 'Urgente', color: '#ef4444', bg: '#fee2e2' },
+  haute:   { label: 'Haute',   color: '#f59e0b', bg: '#fef3c7' },
+  normale: { label: 'Normale', color: '#64748b', bg: '#f1f5f9' },
 };
 
-const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const AUD_STATUS = {
+  SCHEDULED: { label: 'À venir',   cls: 'dds-b-blue'   },
+  COMPLETED: { label: 'Effectuée', cls: 'dds-b-green'  },
+  POSTPONED: { label: 'Reportée',  cls: 'dds-b-amber'  },
+  CANCELLED: { label: 'Annulée',   cls: 'dds-b-red'    },
+};
+
+const fmtDate = d => d
+  ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+  : '—';
 const fmtDateTime = d => {
   if (!d) return '—';
   try { return new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
   catch { return d; }
 };
 
-/* ─── Composant ──────────────────────────────────────────── */
-const DossierDetail = () => {
+/* ─── Component ─────────────────────────────────────── */
+export default function DossierDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [visible,    setVisible]    = useState(false);
-  const [activeTab,  setActiveTab]  = useState('documents');
-  const [dossier,    setDossier]    = useState(null);
-  const [caseData,   setCaseData]   = useState(null);
-  const [documents,  setDocuments]  = useState([]);
-  const [audiences,  setAudiences]  = useState([]);
-  const [tribunals,  setTribunals]  = useState([]);
-  const [statut,     setStatut]     = useState('en_cours');
-  const [priorite,   setPriorite]   = useState('normale');
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState(null);
-  const [showDocForm, setShowDocForm] = useState(false);
-  const [docFile,    setDocFile]    = useState(null);
-  const [savingDoc,  setSavingDoc]  = useState(false);
+  const [activeTab,    setActiveTab]    = useState('documents');
+  const [dossier,      setDossier]      = useState(null);
+  const [caseData,     setCaseData]     = useState(null);
+  const [documents,    setDocuments]    = useState([]);
+  const [audiences,    setAudiences]    = useState([]);
+  const [tribunals,    setTribunals]    = useState([]);
+  const [statut,       setStatut]       = useState('en_cours');
+  const [priorite,     setPriorite]     = useState('normale');
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
+  const [showUpload,   setShowUpload]   = useState(false);
+  const [docFile,      setDocFile]      = useState(null);
+  const [savingDoc,    setSavingDoc]    = useState(false);
 
   const userId = (() => { try { return JSON.parse(localStorage.getItem('user'))?.idu; } catch { return null; } })();
 
   const loadDocuments = () =>
     getDocumentsByCase(id)
       .then(r => setDocuments(r.data.map(d => ({
-        id: d.idd,
-        nom: d.file_name || '-',
-        type: d.file_type || '-',
+        id: d.idd, nom: d.file_name || '—', type: d.file_type || '—',
         date: d.uploaded_at ? d.uploaded_at.split('T')[0] : null,
-        uploadedBy: d.uploaded_by_name || '-',
+        uploadedBy: d.uploaded_by_name || '—',
       }))))
       .catch(console.error);
 
@@ -99,26 +102,23 @@ const DossierDetail = () => {
         setPriorite(c.priority || 'normale');
         setDossier({
           id:            c.idc,
-          numero:        c.case_number || '-',
-          client:        c.client_full_name || '-',
+          numero:        c.case_number || '—',
+          client:        c.client_full_name || '—',
           clientId:      c.client_id,
           type:          c.case_type || 'Autre',
           dateOuverture: c.created_at ? c.created_at.split('T')[0] : null,
         });
         setDocuments(docsRes.data.map(d => ({
-          id: d.idd,
-          nom: d.file_name || '-',
-          type: d.file_type || '-',
+          id: d.idd, nom: d.file_name || '—', type: d.file_type || '—',
           date: d.uploaded_at ? d.uploaded_at.split('T')[0] : null,
-          uploadedBy: d.uploaded_by_name || '-',
+          uploadedBy: d.uploaded_by_name || '—',
         })));
-        setTimeout(() => setVisible(true), 80);
       })
       .catch(() => setError('Impossible de charger ce dossier'))
       .finally(() => setLoading(false));
   }, [id]);
 
-  const handleUploadDoc = e => {
+  const handleUpload = e => {
     e.preventDefault();
     if (!docFile) return;
     setSavingDoc(true);
@@ -127,14 +127,9 @@ const DossierDetail = () => {
     fd.append('caseId', id);
     fd.append('uploadedBy', userId);
     uploadDocument(fd)
-      .then(() => { loadDocuments(); setShowDocForm(false); setDocFile(null); })
+      .then(() => { loadDocuments(); setShowUpload(false); setDocFile(null); })
       .catch(err => alert(err.response?.data?.message || 'Erreur lors du téléversement'))
       .finally(() => setSavingDoc(false));
-  };
-
-  const handleDeleteDoc = docId => {
-    if (!window.confirm('Supprimer ce document ?')) return;
-    deleteDocument(docId).then(loadDocuments).catch(() => alert('Erreur'));
   };
 
   const handleDownload = async docId => {
@@ -143,143 +138,189 @@ const DossierDetail = () => {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a   = document.createElement('a');
       a.href    = url;
-      const doc = documents.find(d => d.id === docId);
-      a.download = doc?.nom || 'document';
+      a.download = documents.find(d => d.id === docId)?.nom || 'document';
       a.click();
       window.URL.revokeObjectURL(url);
     } catch { alert('Erreur lors du téléchargement'); }
   };
 
+  const handleDeleteDoc = docId => {
+    if (!window.confirm('Supprimer ce document ?')) return;
+    deleteDocument(docId).then(loadDocuments).catch(() => alert('Erreur'));
+  };
+
+  /* ─── Loading ── */
   if (loading) return (
-    <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7680', fontSize: '1rem' }}>
-      <i className="fas fa-spinner fa-spin" style={{ marginRight: '0.5rem' }}></i>Chargement...
+    <div className="dds">
+      <div className="dds-loading">
+        <div className="dds-spinner" />
+        <span>Chargement du dossier…</span>
+      </div>
     </div>
   );
 
+  /* ─── Error ── */
   if (error || !dossier) return (
-    <div className="dd-not-found">
-      <div className="dd-nf-icon"><i className="fas fa-folder-open"></i></div>
-      <h2>Dossier introuvable</h2>
-      <p>{error || 'Ce dossier n\'existe pas ou a été supprimé.'}</p>
-      <button onClick={() => navigate('/secretaire/dossiers')}>
-        <i className="fas fa-arrow-left"></i> Retour
-      </button>
+    <div className="dds">
+      <div className="dds-not-found">
+        <div className="dds-nf-icon"><FolderX size={32} /></div>
+        <h2>Dossier introuvable</h2>
+        <p>{error || 'Ce dossier n\'existe pas ou a été supprimé.'}</p>
+        <button className="dds-nf-btn" onClick={() => navigate('/secretaire/dossiers')}>
+          <ArrowLeft size={14} /> Retour aux dossiers
+        </button>
+      </div>
     </div>
   );
 
-  const tm = TYPE_META[dossier.type] || { icon: 'fa-folder', color: '#64748b', bg: '#f3f4f6' };
-  const sm = STATUT_META[statut]     || { label: statut, cls: '', icon: 'fa-circle' };
+  const tm = TYPE_META[dossier.type] || defaultType;
+  const sm = STATUT_META[statut]     || STATUT_META.en_cours;
   const pm = PRIO_META[priorite]     || PRIO_META.normale;
+  const { Icon: TypeIcon } = tm;
+  const { Icon: StatutIcon } = sm;
 
   const tribunalInfo = tribunals.find(t => t.id === caseData?.tribunalId) || null;
 
   const tabs = [
-    { key: 'documents', label: 'Documents', icon: 'fa-file-alt',      count: documents.length },
-    { key: 'audiences', label: 'Audiences', icon: 'fa-gavel',         count: audiences.length },
-    { key: 'factures',  label: 'Factures',  icon: 'fa-file-invoice',  count: null },
-    { key: 'sequestre', label: 'Séquestre', icon: 'fa-vault',         count: null },
-    { key: 'tribunal',  label: 'Tribunal',  icon: 'fa-landmark',      count: caseData?.tribunalId ? 1 : 0 },
-    { key: 'infos',     label: 'Infos',     icon: 'fa-info-circle',   count: null },
+    { key: 'documents', label: 'Documents', Icon: FileText,       count: documents.length },
+    { key: 'audiences', label: 'Audiences', Icon: Gavel,          count: audiences.length },
+    { key: 'factures',  label: 'Factures',  Icon: FileSpreadsheet, count: null             },
+    { key: 'sequestre', label: 'Séquestre', Icon: Coins,          count: null             },
+    { key: 'tribunal',  label: 'Tribunal',  Icon: Landmark,        count: caseData?.tribunalId ? 1 : 0 },
+    { key: 'infos',     label: 'Infos',     Icon: Info,            count: null             },
   ];
 
   return (
-    <div className={`dd-wrapper ${visible ? 'dd-visible' : ''}`}>
+    <div className="dds">
 
-      {/* ── Retour ── */}
-      <button className="dd-back" onClick={() => navigate('/secretaire/dossiers')}>
-        <i className="fas fa-arrow-left"></i>
-        <span>Retour aux dossiers</span>
+      {/* ── BACK ── */}
+      <button className="dds-back" onClick={() => navigate('/secretaire/dossiers')}>
+        <ArrowLeft size={14} /> Retour aux dossiers
       </button>
 
-      {/* ══════ HERO ══════ */}
-      <div className="dd-hero">
-        <div className="dd-hero-topbar" />
-        <div className="dd-hero-main">
-          <div className="dd-type-icon" style={{ background: tm.bg, color: tm.color }}>
-            <i className={`fas ${tm.icon}`}></i>
-          </div>
-          <div className="dd-hero-identity">
-            <div className="dd-hero-row1">
-              <span className="dd-numero">
-                <i className="fas fa-hashtag"></i>{dossier.numero}
-              </span>
-              <div className="dd-badges">
-                <span className={`dd-statut ${sm.cls}`}>
-                  <i className={`fas ${sm.icon}`}></i>{sm.label}
+      {/* ── HEADER BANNER ── */}
+      <div className="dds-header">
+        <div className="dds-header-blob" />
+
+        <div className="dds-header-top">
+          <div className="dds-eyebrow"><Sparkles size={11} /> Dossier juridique</div>
+          <div className="dds-header-row">
+            <div className="dds-type-icon" style={{ background: tm.bg, color: tm.color }}>
+              <TypeIcon size={26} />
+            </div>
+            <div className="dds-header-info">
+              <h1 className="dds-title">
+                N° <em>{dossier.numero}</em>
+              </h1>
+              <p className="dds-subtitle">
+                <TypeIcon size={13} style={{ color: tm.color }} /> {dossier.type}
+                &nbsp;·&nbsp;
+                <User size={13} />
+                <button
+                  className="dds-client-link"
+                  onClick={() => dossier.clientId && navigate(`/secretaire/clients/${dossier.clientId}`)}
+                >
+                  {dossier.client}
+                </button>
+              </p>
+              <div className="dds-header-badges">
+                <span className={`dds-badge-status ${sm.cls}`}>
+                  <StatutIcon size={11} /> {sm.label}
                 </span>
-                <span className="dd-prio" style={{ background: pm.dot + '22', color: pm.dot, border: `1px solid ${pm.dot}44`, borderRadius: '999px', padding: '0.2rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: pm.dot, display: 'inline-block' }}></span>
-                  {pm.label}
+                <span className="dds-badge-prio" style={{ background: pm.bg, color: pm.color }}>
+                  <Flag size={10} /> {pm.label}
                 </span>
               </div>
             </div>
-            <h1 className="dd-hero-title">
-              {dossier.type} <span className="dd-hero-sep">·</span> {dossier.client}
-            </h1>
           </div>
-          <div className="dd-hero-actions">
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic', padding: '0.5rem' }}>
-              <i className="fas fa-eye" style={{ marginRight: '0.4rem' }}></i>Lecture seule
-            </span>
+        </div>
+
+        <div className="dds-header-divider" />
+
+        <div className="dds-header-stats">
+          <div className="dds-hstat">
+            <span className="dds-hstat-number">{documents.length}</span>
+            <span className="dds-hstat-label">Documents</span>
+          </div>
+          <div className="dds-hstat-sep" />
+          <div className="dds-hstat">
+            <span className="dds-hstat-number">{audiences.length}</span>
+            <span className="dds-hstat-label">Audiences</span>
+          </div>
+          <div className="dds-hstat-sep" />
+          <div className="dds-hstat">
+            <span className="dds-hstat-number">{fmtDate(dossier.dateOuverture)}</span>
+            <span className="dds-hstat-label">Date d'ouverture</span>
           </div>
         </div>
       </div>
 
-      {/* ══════ TABS ══════ */}
-      <div className="dd-tab-nav">
-        {tabs.map(tab => (
+      {/* ── TABS ── */}
+      <div className="dds-tabs">
+        {tabs.map(({ key, label, Icon: TabIcon, count }) => (
           <button
-            key={tab.key}
-            className={`dd-tab-btn ${activeTab === tab.key ? 'dd-tab-active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
+            key={key}
+            className={`dds-tab ${activeTab === key ? 'dds-tab-active' : ''}`}
+            onClick={() => setActiveTab(key)}
           >
-            <i className={`fas ${tab.icon}`}></i>
-            {tab.label}
-            {tab.count !== null && (
-              <span className="dd-tab-count">{tab.count}</span>
-            )}
+            <TabIcon size={14} />
+            {label}
+            {count !== null && <span className="dds-tab-count">{count}</span>}
           </button>
         ))}
       </div>
 
-
-      {/* ══════ DOCUMENTS ══════ */}
+      {/* ══ DOCUMENTS ══ */}
       {activeTab === 'documents' && (
-        <div className="dd-section">
-          <div className="dd-section-header">
-            <h2><i className="fas fa-file-alt"></i> Documents</h2>
+        <div className="dds-section">
+          <div className="dds-section-head">
+            <div className="dds-section-ttl"><FileText size={15} /> Documents</div>
+            <button className="dds-btn-primary" onClick={() => setShowUpload(v => !v)}>
+              <Upload size={13} /> {showUpload ? 'Annuler' : 'Ajouter'}
+            </button>
           </div>
 
+          {showUpload && (
+            <form className="dds-upload-form" onSubmit={handleUpload}>
+              <label className="dds-file-label">
+                <File size={15} />
+                {docFile ? docFile.name : 'Choisir un fichier…'}
+                <input type="file" style={{ display: 'none' }} onChange={e => setDocFile(e.target.files[0])} />
+              </label>
+              <button type="submit" className="dds-btn-primary" disabled={!docFile || savingDoc}>
+                {savingDoc ? <><Loader2 size={13} className="dds-spin" /> Envoi…</> : <><Upload size={13} /> Envoyer</>}
+              </button>
+            </form>
+          )}
+
           {documents.length === 0 ? (
-            <div className="dd-empty">
-              <i className="fas fa-folder-open"></i>
-              <p>Aucun document pour ce dossier</p>
+            <div className="dds-empty">
+              <div className="dds-empty-icon"><FileText size={28} /></div>
+              <p className="dds-empty-title">Aucun document pour ce dossier</p>
+              <p className="dds-empty-sub">Ajoutez un document via le bouton ci-dessus</p>
             </div>
           ) : (
-            <div className="dd-table-wrap">
-              <table className="dd-table">
-                <thead>
-                  <tr>
-                    <th>Nom du fichier</th>
-                    <th>Type</th>
-                    <th>Date</th>
-                    <th>Ajouté par</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
+            <div className="dds-table-wrap">
+              <table className="dds-table">
+                <thead><tr>
+                  <th>Nom du fichier</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th>Ajouté par</th>
+                  <th>Actions</th>
+                </tr></thead>
                 <tbody>
                   {documents.map(doc => (
                     <tr key={doc.id}>
-                      <td className="td-bold">
-                        <i className="fas fa-file" style={{ marginRight: '0.5rem', color: '#64748b' }}></i>
-                        {doc.nom}
+                      <td className="dds-td-bold">
+                        <File size={13} className="dds-td-ic" /> {doc.nom}
                       </td>
-                      <td><span className="dd-type-chip">{doc.type}</span></td>
+                      <td><span className="dds-chip">{doc.type}</span></td>
                       <td>{fmtDate(doc.date)}</td>
                       <td>{doc.uploadedBy}</td>
                       <td>
-                        <button className="dd-icon-btn" title="Télécharger" onClick={() => handleDownload(doc.id)}>
-                          <i className="fas fa-download"></i>
+                        <button className="dds-icon-btn" title="Télécharger" onClick={() => handleDownload(doc.id)}>
+                          <Download size={13} />
                         </button>
                       </td>
                     </tr>
@@ -291,52 +332,52 @@ const DossierDetail = () => {
         </div>
       )}
 
-      {/* ══════ AUDIENCES ══════ */}
+      {/* ══ AUDIENCES ══ */}
       {activeTab === 'audiences' && (
-        <div className="dd-section">
-          <div className="dd-section-header">
-            <h2><i className="fas fa-gavel"></i> Audiences</h2>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>
-              <i className="fas fa-lock" style={{ marginRight: '0.4rem' }}></i>Gérées par l'avocat
-            </span>
+        <div className="dds-section">
+          <div className="dds-section-head">
+            <div className="dds-section-ttl"><Gavel size={15} /> Audiences</div>
+            <span className="dds-read-only"><Lock size={11} /> Gérées par l'avocat</span>
           </div>
 
           {audiences.length === 0 ? (
-            <div className="dd-empty">
-              <i className="fas fa-calendar-times"></i>
-              <p>Aucune audience pour ce dossier</p>
+            <div className="dds-empty">
+              <div className="dds-empty-icon"><CalendarX size={28} /></div>
+              <p className="dds-empty-title">Aucune audience pour ce dossier</p>
+              <p className="dds-empty-sub">Les audiences sont planifiées par l'avocat</p>
             </div>
           ) : (
-            <div className="dd-table-wrap">
-              <table className="dd-table">
-                <thead>
-                  <tr>
-                    <th>Date & heure</th>
-                    <th>Type</th>
-                    <th>Salle</th>
-                    <th>Juge</th>
-                    <th>Statut</th>
-                    <th>Notes</th>
-                  </tr>
-                </thead>
+            <div className="dds-table-wrap">
+              <table className="dds-table">
+                <thead><tr>
+                  <th>Date &amp; heure</th>
+                  <th>Type</th>
+                  <th>Salle</th>
+                  <th>Juge</th>
+                  <th>Statut</th>
+                  <th>Notes</th>
+                </tr></thead>
                 <tbody>
                   {audiences.map(aud => {
                     const as = AUD_STATUS[aud.status] || { label: aud.status, cls: '' };
                     return (
-                      <tr key={aud.id} className={aud.status === 'SCHEDULED' ? 'dd-row-highlight' : ''}>
-                        <td className="td-bold">{fmtDateTime(aud.hearingDate)}</td>
-                        <td>{HEARING_TYPE_LABEL[aud.hearingType] || aud.hearingType || '—'}</td>
+                      <tr key={aud.id} className={aud.status === 'SCHEDULED' ? 'dds-tr-highlight' : ''}>
+                        <td className="dds-td-bold">{fmtDateTime(aud.hearingDate)}</td>
+                        <td>{aud.hearingType || '—'}</td>
                         <td>{aud.roomNumber || '—'}</td>
-                        <td>{aud.judgeName || '—'}</td>
                         <td>
-                          <span className={`dd-badge ${as.cls}`}>{as.label}</span>
+                          {aud.judgeName
+                            ? <span className="dds-judge"><User size={12} />{aud.judgeName}</span>
+                            : '—'
+                          }
+                        </td>
+                        <td>
+                          <span className={`dds-badge ${as.cls}`}>{as.label}</span>
                           {aud.status === 'POSTPONED' && aud.postponeReason && (
-                            <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: '0.2rem' }}>
-                              ↻ {aud.postponeReason}
-                            </div>
+                            <div className="dds-postpone-reason">↻ {aud.postponeReason}</div>
                           )}
                         </td>
-                        <td style={{ maxWidth: 200, fontSize: '0.82rem', color: '#64748b' }}>{aud.description || aud.notes || '—'}</td>
+                        <td className="dds-td-note">{aud.description || aud.notes || '—'}</td>
                       </tr>
                     );
                   })}
@@ -347,75 +388,58 @@ const DossierDetail = () => {
         </div>
       )}
 
-      {/* ══════ FACTURES ══════ */}
+      {/* ══ FACTURES ══ */}
       {activeTab === 'factures' && (
-        <div className="dd-tab-content">
+        <div className="dds-tab-content">
           <FacturesTabSec caseId={id} />
         </div>
       )}
 
-      {/* ══════ SÉQUESTRE ══════ */}
+      {/* ══ SÉQUESTRE ══ */}
       {activeTab === 'sequestre' && (
-        <div className="dd-tab-content">
+        <div className="dds-tab-content">
           <SequestreTabSec caseId={id} />
         </div>
       )}
 
-      {/* ══════ TRIBUNAL ══════ */}
+      {/* ══ TRIBUNAL ══ */}
       {activeTab === 'tribunal' && (
-        <div className="dd-section">
-          <div className="dd-section-header">
-            <h2><i className="fas fa-landmark"></i> Informations du Tribunal</h2>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>
-              <i className="fas fa-lock" style={{ marginRight: '0.4rem' }}></i>Gérées par l'avocat
-            </span>
+        <div className="dds-section">
+          <div className="dds-section-head">
+            <div className="dds-section-ttl"><Landmark size={15} /> Informations du Tribunal</div>
+            <span className="dds-read-only"><Lock size={11} /> Gérées par l'avocat</span>
           </div>
 
           {!caseData?.tribunalId ? (
-            <div className="dd-empty">
-              <i className="fas fa-landmark"></i>
-              <p>Aucun tribunal assigné à ce dossier</p>
+            <div className="dds-empty">
+              <div className="dds-empty-icon"><Landmark size={28} /></div>
+              <p className="dds-empty-title">Aucun tribunal assigné</p>
+              <p className="dds-empty-sub">Le tribunal est renseigné par l'avocat en charge</p>
             </div>
           ) : (
-            <div className="dd-info-grid">
-              <div className="dd-info-card">
-                <i className="fas fa-landmark" style={{ color: '#3b82f6' }}></i>
-                <div>
-                  <label>Tribunal</label>
-                  <p>{tribunalInfo?.name || caseData?.tribunalId || '—'}</p>
+            <div className="dds-info-grid">
+              {[
+                { Icon: Landmark,     label: 'Tribunal',             value: tribunalInfo?.name || caseData?.tribunalId || '—', color: '#3b82f6', bg: '#dbeafe' },
+                { Icon: Hash,         label: 'N° dossier tribunal',  value: caseData?.courtCaseNumber || '—',                  color: '#8b5cf6', bg: '#ede9fe' },
+                { Icon: User,         label: 'Juge assigné',         value: caseData?.judgeAssigned || '—',                    color: '#f59e0b', bg: '#fef3c7' },
+                { Icon: Layers,       label: 'Phase',                value: caseData?.casePhase || '—',                        color: '#10b981', bg: '#d1fae5' },
+                { Icon: CalendarPlus, label: 'Date dépôt tribunal',  value: fmtDate(caseData?.dateFiledAtTribunal),             color: '#06b6d4', bg: '#cffafe' },
+              ].map(({ Icon: Ic, label, value, color, bg }) => (
+                <div key={label} className="dds-minfo">
+                  <div className="dds-minfo-ic" style={{ background: bg, color }}>
+                    <Ic size={15} />
+                  </div>
+                  <div>
+                    <label>{label}</label>
+                    <p>{value}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="dd-info-card">
-                <i className="fas fa-hashtag" style={{ color: '#8b5cf6' }}></i>
-                <div>
-                  <label>N° dossier tribunal</label>
-                  <p>{caseData?.courtCaseNumber || '—'}</p>
-                </div>
-              </div>
-              <div className="dd-info-card">
-                <i className="fas fa-user-tie" style={{ color: '#f59e0b' }}></i>
-                <div>
-                  <label>Juge assigné</label>
-                  <p>{caseData?.judgeAssigned || '—'}</p>
-                </div>
-              </div>
-              <div className="dd-info-card">
-                <i className="fas fa-layer-group" style={{ color: '#10b981' }}></i>
-                <div>
-                  <label>Phase</label>
-                  <p>{caseData?.casePhase || '—'}</p>
-                </div>
-              </div>
-              <div className="dd-info-card">
-                <i className="fas fa-calendar-plus" style={{ color: '#06b6d4' }}></i>
-                <div>
-                  <label>Date dépôt tribunal</label>
-                  <p>{fmtDate(caseData?.dateFiledAtTribunal)}</p>
-                </div>
-              </div>
+              ))}
               {caseData?.notesJudicial && (
-                <div className="dd-info-card" style={{ gridColumn: '1 / -1' }}>
-                  <i className="fas fa-sticky-note" style={{ color: '#64748b' }}></i>
+                <div className="dds-minfo dds-minfo-full">
+                  <div className="dds-minfo-ic" style={{ background: '#f1f5f9', color: '#64748b' }}>
+                    <StickyNote size={15} />
+                  </div>
                   <div>
                     <label>Notes judiciaires</label>
                     <p>{caseData.notesJudicial}</p>
@@ -427,72 +451,40 @@ const DossierDetail = () => {
         </div>
       )}
 
-      {/* ══════ INFOS ══════ */}
+      {/* ══ INFOS ══ */}
       {activeTab === 'infos' && (
-        <div className="dd-section">
-          <div className="dd-section-header">
-            <h2><i className="fas fa-info-circle"></i> Informations générales</h2>
-          </div>
-          <div className="dd-info-grid">
-            <div className="dd-info-card">
-              <i className={`fas ${tm.icon}`} style={{ color: tm.color }}></i>
-              <div>
-                <label>Type de dossier</label>
-                <p>{dossier.type}</p>
-              </div>
-            </div>
-            <div className="dd-info-card">
-              <i className="fas fa-user" style={{ color: '#3b82f6' }}></i>
-              <div>
-                <label>Client</label>
-                <p>{dossier.client}</p>
-              </div>
-            </div>
-            <div className="dd-info-card">
-              <i className="fas fa-calendar-plus" style={{ color: '#10b981' }}></i>
-              <div>
-                <label>Date d'ouverture</label>
-                <p>{fmtDate(dossier.dateOuverture)}</p>
-              </div>
-            </div>
-            <div className="dd-info-card">
-              <i className="fas fa-circle-notch" style={{ color: sm.cls === 'dd-s-progress' ? '#2563eb' : sm.cls === 'dd-s-waiting' ? '#f59e0b' : '#16a34a' }}></i>
-              <div>
-                <label>Statut</label>
-                <p>{sm.label}</p>
-              </div>
-            </div>
-            <div className="dd-info-card">
-              <i className="fas fa-flag" style={{ color: pm.dot }}></i>
-              <div>
-                <label>Priorité</label>
-                <p style={{ color: pm.dot, fontWeight: 600 }}>{pm.label}</p>
-              </div>
-            </div>
-            <div className="dd-info-card">
-              <i className="fas fa-file-alt" style={{ color: '#64748b' }}></i>
-              <div>
-                <label>Documents</label>
-                <p>{documents.length} fichier{documents.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-            <div className="dd-info-card">
-              <i className="fas fa-gavel" style={{ color: '#64748b' }}></i>
-              <div>
-                <label>Audiences</label>
-                <p>{audiences.length} audience{audiences.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
+        <div className="dds-section">
+          <div className="dds-section-head">
+            <div className="dds-section-ttl"><Info size={15} /> Informations générales</div>
           </div>
 
-          {/* Notice accès restreint */}
-          <div style={{ marginTop: '1.5rem', background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-            <i className="fas fa-info-circle" style={{ color: '#1e3a8a', fontSize: '1.25rem', marginTop: '0.1rem' }}></i>
+          <div className="dds-info-grid">
+            {[
+              { Icon: tm.Icon,      label: 'Type de dossier',  value: dossier.type,                  color: tm.color,    bg: tm.bg               },
+              { Icon: User,         label: 'Client',           value: dossier.client,                color: '#3b82f6',   bg: '#dbeafe'            },
+              { Icon: CalendarPlus, label: "Date d'ouverture", value: fmtDate(dossier.dateOuverture), color: '#10b981',   bg: '#d1fae5'            },
+              { Icon: sm.Icon,      label: 'Statut',           value: sm.label,                      color: '#2563eb',   bg: '#eff6ff'            },
+              { Icon: Flag,         label: 'Priorité',         value: pm.label,                      color: pm.color,    bg: pm.bg                },
+              { Icon: FileText,     label: 'Documents',        value: `${documents.length} fichier${documents.length !== 1 ? 's' : ''}`, color: '#64748b', bg: '#f1f5f9' },
+              { Icon: Gavel,        label: 'Audiences',        value: `${audiences.length} audience${audiences.length !== 1 ? 's' : ''}`, color: '#64748b', bg: '#f1f5f9' },
+            ].map(({ Icon: Ic, label, value, color, bg }) => (
+              <div key={label} className="dds-minfo">
+                <div className="dds-minfo-ic" style={{ background: bg, color }}>
+                  <Ic size={15} />
+                </div>
+                <div>
+                  <label>{label}</label>
+                  <p>{value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="dds-notice">
+            <AlertCircle size={17} />
             <div>
-              <h4 style={{ margin: '0 0 0.35rem 0', color: '#1e3a8a', fontSize: '0.9rem' }}>Accès restreint</h4>
-              <p style={{ margin: 0, color: '#475569', fontSize: '0.85rem', lineHeight: 1.6 }}>
-                Les notes juridiques, la gestion du statut et les audiences sont réservées à l'avocat. La secrétaire peut consulter les documents, les factures et le séquestre.
-              </p>
+              <strong>Accès restreint</strong>
+              <p>Les notes juridiques, la gestion du statut et les audiences sont réservées à l'avocat. La secrétaire peut consulter les documents, les factures et le séquestre.</p>
             </div>
           </div>
         </div>
@@ -500,6 +492,4 @@ const DossierDetail = () => {
 
     </div>
   );
-};
-
-export default DossierDetail;
+}

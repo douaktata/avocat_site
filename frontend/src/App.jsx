@@ -52,6 +52,8 @@ import DossiersSecretaire from './secretaire/DossiersSecretaire';
 import TachesSecretaire from './secretaire/TachesSecretaire';
 import MessagerieSecretaire from './secretaire/MessagerieSecretaire';
 import ProfileSecretaire from './secretaire/ProfileSecretaire';
+import MembresDuBarreau from './secretaire/Membresdubarreau';
+import MembreDetail from './secretaire/MembreDetail';
 
 // Stagiaire
 import LayoutStagiaire from './stagiaire/LayoutStagiaire';
@@ -164,6 +166,8 @@ function AppRoutes() {
         <Route path="affaires" element={<AffairesJuridiques />} />
         <Route path="staff" element={<Staffsec />} />
         <Route path="staff/:id" element={<StaffDetail />} />
+        <Route path="barreau" element={<MembresDuBarreau />} />
+        <Route path="barreau/:id" element={<MembreDetail />} />
         <Route path="recherche" element={<RechercheGlobale />} />
         <Route path="profile" element={<ProfileSecretaire />} />
       </Route>

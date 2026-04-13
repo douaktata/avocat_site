@@ -1,242 +1,364 @@
 /* ============================================================
-   DOSSIER DETAIL — SECRÉTAIRE  (extends Dossierdetailav.css)
+   DOSSIER DETAIL — SECRÉTAIRE
+   matches dashboard / clients / clientdetails design system
    ============================================================ */
 
-/* ── Section ── */
-.dd-section {
-  background: white;
-  border-radius: 16px;
-  border: 1.5px solid #e5e7eb;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  overflow: hidden;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-.dd-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8faff;
-  gap: 1rem;
-}
-
-.dd-section-header h2 {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1e3a8a;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dd-section-header h2 i { font-size: 0.9rem; }
-
-/* ── Table ── */
-.dd-table-wrap {
-  overflow-x: auto;
-  padding: 1rem 1.5rem 1.5rem;
-}
-
-.dd-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-  min-width: 540px;
-}
-
-.dd-table thead tr {
-  background: linear-gradient(135deg, #1e3a8a, #2563eb);
-}
-
-.dd-table thead th {
-  padding: 0.8rem 1rem;
-  text-align: left;
-  color: rgba(255,255,255,0.9);
-  font-weight: 600;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  white-space: nowrap;
-}
-
-.dd-table tbody tr {
-  border-bottom: 1px solid #f1f5f9;
-  transition: background 0.15s;
-}
-
-.dd-table tbody tr:last-child { border-bottom: none; }
-.dd-table tbody tr:hover { background: #f0f7ff; }
-
-.dd-table td {
-  padding: 0.85rem 1rem;
-  color: #1f2937;
-  vertical-align: middle;
-}
-
-.td-bold { font-weight: 600; color: #1e3a8a; }
-
-.dd-row-highlight { background: #eff6ff; }
-
-/* ── Type chip in table ── */
-.dd-type-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.6rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: #f1f5f9;
-  color: #475569;
-}
-
-/* ── Badges ── */
-.dd-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.7rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.badge-upcoming  { background: #dbeafe; color: #1d4ed8; }
-.badge-done      { background: #d1fae5; color: #065f46; }
-.badge-pending   { background: #fef3c7; color: #92400e; }
-.badge-cancelled { background: #fee2e2; color: #991b1b; }
-
-/* ── Icon buttons ── */
-.dd-icon-btn {
-  width: 32px;
-  height: 32px;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 8px;
-  background: white;
-  color: #64748b;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  transition: all 0.18s;
-}
-
-.dd-icon-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
-
-.dd-icon-btn-danger:hover { border-color: #ef4444; color: #ef4444; background: #fee2e2; }
-
-/* ── Inline upload form ── */
-.dd-inline-form {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8faff;
+.dds {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  animation: ddsFade 0.3s ease both;
+}
+@keyframes ddsFade { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+/* ─── BACK ───────────────────────────────────────────── */
+.dds-back {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .55rem 1rem; background: #fff;
+  border: 1px solid #e2e8f0; border-radius: 9px;
+  color: #64748b; font-size: .82rem; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+  transition: border-color .15s, color .15s, transform .15s;
+  width: fit-content;
+}
+.dds-back:hover { border-color: #2563eb; color: #2563eb; transform: translateX(-2px); }
+
+/* ─── LOADING ────────────────────────────────────────── */
+.dds-loading {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 1rem; height: 220px;
+  color: #94a3b8; font-size: .875rem; font-weight: 500;
+}
+.dds-spinner {
+  width: 28px; height: 28px;
+  border: 3px solid #e2e8f0; border-top-color: #2563eb;
+  border-radius: 50%; animation: ddsSpin .7s linear infinite;
+}
+@keyframes ddsSpin { to { transform: rotate(360deg); } }
+
+/* ─── NOT FOUND ──────────────────────────────────────── */
+.dds-not-found {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: .75rem;
+  padding: 5rem 2rem; text-align: center;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+}
+.dds-nf-icon {
+  width: 64px; height: 64px; border-radius: 16px;
+  background: #eff6ff; color: #93c5fd;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: .25rem;
+}
+.dds-not-found h2 { margin: 0; font-size: 1rem; font-weight: 700; color: #334155; }
+.dds-not-found p  { margin: 0; font-size: .85rem; color: #94a3b8; }
+.dds-nf-btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  margin-top: .5rem; padding: .55rem 1.1rem;
+  background: #2563eb; color: #fff; border: none;
+  border-radius: 8px; font-size: .875rem; font-weight: 600;
+  font-family: inherit; cursor: pointer; transition: background .15s;
+}
+.dds-nf-btn:hover { background: #1d4ed8; }
+
+/* ─── HEADER BANNER ──────────────────────────────────── */
+.dds-header {
+  position: relative; overflow: hidden;
+  background: linear-gradient(130deg, #eff6ff 0%, #f8faff 50%, #fff 100%);
+  border: 1px solid #dbeafe; border-radius: 16px;
+  padding: 1.875rem 2.25rem 1.5rem;
+  display: flex; flex-direction: column;
+}
+.dds-header-blob {
+  position: absolute; top: -80px; right: -80px;
+  width: 260px; height: 260px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 65%);
+  pointer-events: none;
+}
+.dds-header-top { position: relative; z-index: 1; margin-bottom: 1.5rem; }
+
+.dds-eyebrow {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .67rem; font-weight: 700; color: #2563eb;
+  text-transform: uppercase; letter-spacing: .1em; margin: 0 0 .875rem;
 }
 
-.dd-form-row {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
+.dds-header-row { display: flex; align-items: flex-start; gap: 1.25rem; }
 
-.dd-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  min-width: 200px;
-}
-
-.dd-form-group label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #374151;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.dd-form-group input,
-.dd-form-group select,
-.dd-form-group textarea {
-  border: 1.5px solid #d1d5db;
-  border-radius: 8px;
-  padding: 0.6rem 0.85rem;
-  font-size: 0.88rem;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.2s;
-  background: white;
-}
-
-.dd-form-group input:focus,
-.dd-form-group select:focus,
-.dd-form-group textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
-}
-
-.dd-form-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-}
-
-/* ── Info grid (infos tab, tribunal tab) ── */
-.dd-info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-}
-
-.dd-info-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
-  padding: 1rem 1.1rem;
-  background: #f8faff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-}
-
-.dd-info-card > i {
-  font-size: 1.1rem;
-  margin-top: 0.15rem;
+.dds-type-icon {
+  width: 64px; height: 64px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 
-.dd-info-card label {
-  display: block;
-  font-size: 0.73rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #9ca3af;
-  margin-bottom: 0.25rem;
+.dds-header-info { display: flex; flex-direction: column; gap: .35rem; }
+.dds-title {
+  font-size: 1.75rem; font-weight: 900; color: #0f172a;
+  letter-spacing: -.04em; margin: 0; line-height: 1.1;
+}
+.dds-title em { font-style: normal; color: #2563eb; }
+
+.dds-subtitle {
+  display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+  font-size: .82rem; color: #64748b; font-weight: 500; margin: 0;
+}
+.dds-subtitle svg { color: #94a3b8; flex-shrink: 0; }
+
+.dds-client-link {
+  background: none; border: none; padding: 0;
+  color: #2563eb; font-weight: 600; font-size: .82rem;
+  font-family: inherit; cursor: pointer;
+  transition: text-decoration .1s;
+}
+.dds-client-link:hover { text-decoration: underline; }
+
+.dds-header-badges {
+  display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .15rem;
+}
+.dds-badge-status {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .25rem .7rem; border-radius: 20px;
+  font-size: .73rem; font-weight: 700;
+}
+.dds-s-open    { background: #dbeafe; color: #1d4ed8; }
+.dds-s-pending { background: #fef3c7; color: #92400e; }
+.dds-s-closed  { background: #d1fae5; color: #065f46; }
+
+.dds-badge-prio {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .25rem .7rem; border-radius: 20px;
+  font-size: .73rem; font-weight: 700;
 }
 
-.dd-info-card p {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #1e3a8a;
-  line-height: 1.4;
-  word-break: break-word;
+/* ── Inline stats ── */
+.dds-header-divider {
+  position: relative; z-index: 1;
+  height: 1px; background: #dbeafe; margin-bottom: 1.25rem;
+}
+.dds-header-stats {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 0;
+}
+.dds-hstat {
+  display: flex; flex-direction: column; gap: .2rem;
+  padding: 0 2rem 0 0;
+}
+.dds-hstat:first-child { padding-left: 0; }
+.dds-hstat-number {
+  font-size: 1.4rem; font-weight: 900; color: #1d4ed8;
+  letter-spacing: -.03em; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.dds-hstat-label {
+  font-size: .72rem; font-weight: 600; color: #64748b;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.dds-hstat-sep {
+  width: 1px; height: 36px; background: #dbeafe;
+  flex-shrink: 0; margin: 0 2rem 0 0;
 }
 
-/* ── Empty inside section ── */
-.dd-section .dd-empty {
-  padding: 3.5rem 2rem;
+/* ─── TABS ───────────────────────────────────────────── */
+.dds-tabs {
+  display: flex; gap: .3rem;
+  background: #fff; border: 1px solid #e2e8f0;
+  border-radius: 12px; padding: .4rem;
+  overflow-x: auto;
+}
+.dds-tab {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .6rem 1.1rem; border: none; border-radius: 8px;
+  background: transparent; color: #64748b;
+  font-size: .875rem; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.dds-tab:hover { background: #f1f5f9; color: #2563eb; }
+.dds-tab-active { background: #2563eb; color: #fff; }
+.dds-tab-active:hover { background: #1d4ed8; color: #fff; }
+.dds-tab-count {
+  border-radius: 20px; padding: .1rem .45rem;
+  font-size: .7rem; font-weight: 700;
+  background: rgba(255,255,255,.25); color: inherit;
+}
+.dds-tab:not(.dds-tab-active) .dds-tab-count {
+  background: #e2e8f0; color: #64748b;
+}
+
+/* ─── SECTION ────────────────────────────────────────── */
+.dds-section {
+  background: #fff; border: 1px solid #e2e8f0;
+  border-radius: 16px; overflow: hidden;
+}
+.dds-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 1.5rem; border-bottom: 1px solid #f1f5f9;
+  background: #fafbfe; gap: 1rem;
+}
+.dds-section-ttl {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .9rem; font-weight: 700; color: #0f172a;
+}
+.dds-read-only {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .75rem; color: #94a3b8; font-style: italic;
+}
+.dds-tab-content { /* wrapper for sub-components */
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ─── EMPTY ──────────────────────────────────────────── */
+.dds-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: .5rem; padding: 3.5rem 1rem;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
+}
+.dds-empty-icon {
+  width: 56px; height: 56px; border-radius: 14px;
+  background: #eff6ff; color: #93c5fd;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: .25rem;
+}
+.dds-empty-title { font-size: .9rem; font-weight: 700; color: #334155; margin: 0; }
+.dds-empty-sub   { font-size: .78rem; color: #94a3b8; margin: 0; }
+
+/* ─── UPLOAD FORM ────────────────────────────────────── */
+.dds-upload-form {
+  display: flex; align-items: center; gap: .75rem;
+  padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9;
+  background: #fafbfe; flex-wrap: wrap;
+}
+.dds-file-label {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .6rem 1rem; background: #fff;
+  border: 1px dashed #cbd5e1; border-radius: 8px;
+  font-size: .82rem; color: #64748b; font-weight: 500;
+  cursor: pointer; transition: border-color .15s, color .15s;
+  flex: 1; min-width: 200px;
+}
+.dds-file-label:hover { border-color: #2563eb; color: #2563eb; }
+
+/* ─── TABLE ──────────────────────────────────────────── */
+.dds-table-wrap { overflow-x: auto; }
+.dds-table {
+  width: 100%; border-collapse: collapse;
+  font-size: .875rem; min-width: 520px;
+}
+.dds-table thead tr { background: #f8fafc; }
+.dds-table thead th {
+  padding: .75rem 1rem; text-align: left;
+  color: #64748b; font-weight: 700; font-size: .72rem;
+  text-transform: uppercase; letter-spacing: .06em;
+  white-space: nowrap; border-bottom: 1px solid #e2e8f0;
+}
+.dds-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background .15s; }
+.dds-table tbody tr:last-child { border-bottom: none; }
+.dds-table tbody tr:hover { background: #f8faff; }
+.dds-table td { padding: .8rem 1rem; color: #334155; vertical-align: middle; }
+.dds-td-bold {
+  font-weight: 600; color: #0f172a;
+  display: flex; align-items: center; gap: .5rem;
+}
+.dds-td-ic { color: #94a3b8; flex-shrink: 0; }
+.dds-td-note { font-size: .8rem; color: #64748b; max-width: 200px; }
+.dds-tr-highlight { background: #f0f9ff; }
+.dds-judge { display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem; }
+.dds-postpone-reason {
+  font-size: .73rem; color: #92400e; margin-top: .2rem;
 }
 
-.dd-section .dd-empty i { font-size: 2.5rem; color: #cbd5e1; }
-.dd-section .dd-empty p { margin: 0; font-weight: 600; color: #64748b; }
+/* ─── CHIPS & BADGES ─────────────────────────────────── */
+.dds-chip {
+  display: inline-flex; align-items: center;
+  padding: .18rem .55rem; border-radius: 20px;
+  font-size: .72rem; font-weight: 600;
+  background: #f1f5f9; color: #475569;
+}
+.dds-badge {
+  display: inline-flex; align-items: center;
+  padding: .22rem .65rem; border-radius: 20px;
+  font-size: .71rem; font-weight: 700; white-space: nowrap;
+}
+.dds-b-blue  { background: #dbeafe; color: #1d4ed8; }
+.dds-b-green { background: #d1fae5; color: #065f46; }
+.dds-b-amber { background: #fef3c7; color: #92400e; }
+.dds-b-red   { background: #fee2e2; color: #991b1b; }
+
+/* ─── ICON BUTTONS ───────────────────────────────────── */
+.dds-icon-btn {
+  width: 32px; height: 32px;
+  border: 1px solid #e2e8f0; border-radius: 8px;
+  background: #fff; color: #64748b;
+  cursor: pointer; display: inline-flex;
+  align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.dds-icon-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+
+/* ─── BUTTONS ────────────────────────────────────────── */
+.dds-btn-primary {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .55rem 1rem; background: #2563eb; color: #fff;
+  border: none; border-radius: 8px; font-size: .82rem; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  transition: background .15s, transform .15s;
+}
+.dds-btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+.dds-btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.dds-spin { animation: ddsSpin .7s linear infinite; }
+
+/* ─── INFO GRID ──────────────────────────────────────── */
+.dds-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .75rem; padding: 1.25rem 1.5rem;
+}
+.dds-minfo {
+  display: flex; align-items: flex-start; gap: .75rem;
+  background: #fafbfe; border: 1px solid #f1f5f9;
+  border-radius: 10px; padding: .75rem 1rem;
+  transition: border-color .15s;
+}
+.dds-minfo:hover { border-color: #dbeafe; }
+.dds-minfo-full { grid-column: 1 / -1; }
+.dds-minfo-ic {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.dds-minfo label {
+  font-size: .67rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: #94a3b8; display: block; margin-bottom: .2rem;
+}
+.dds-minfo p { font-size: .875rem; color: #0f172a; font-weight: 600; margin: 0; word-break: break-word; }
+
+/* ─── NOTICE (restricted access) ────────────────────── */
+.dds-notice {
+  display: flex; align-items: flex-start; gap: 1rem;
+  margin: 0 1.5rem 1.5rem;
+  background: #eff6ff; border: 1px solid #bfdbfe;
+  border-radius: 12px; padding: 1rem 1.25rem;
+  color: #1d4ed8;
+}
+.dds-notice svg { flex-shrink: 0; margin-top: .1rem; }
+.dds-notice strong { display: block; font-size: .875rem; margin-bottom: .3rem; color: #1e3a8a; }
+.dds-notice p { margin: 0; font-size: .82rem; color: #475569; line-height: 1.6; }
+
+/* ─── RESPONSIVE ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .dds-info-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .dds-header       { padding: 1.5rem; }
+  .dds-header-row   { flex-direction: column; gap: .875rem; }
+  .dds-title        { font-size: 1.4rem; }
+  .dds-header-stats { flex-wrap: wrap; gap: .75rem; }
+  .dds-hstat        { padding: 0; }
+  .dds-hstat-sep    { display: none; }
+  .dds-info-grid    { grid-template-columns: 1fr; padding: 1rem; }
+  .dds-tabs         { gap: .2rem; }
+  .dds-tab          { padding: .55rem .75rem; font-size: .8rem; }
+}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, Search, X, Mail, Phone, CreditCard,
   Calendar, Eye, ArrowRight, UserX, MapPin,
+  UserPlus, Sparkles,
 } from 'lucide-react';
 import { getUsersByRole } from '../api';
 import './ClientsSecretaire.css';
@@ -40,33 +41,47 @@ export default function ClientsSecretaire() {
   return (
     <div className="cs">
 
-      {/* Header */}
+      {/* ── HEADER ── */}
       <div className="cs-header">
-        <div>
-          <h1 className="cs-title">Clients</h1>
-          <p className="cs-sub">Gérez le portefeuille clients du cabinet</p>
+        <div className="cs-header-blob" />
+
+        <div className="cs-header-top">
+          <div className="cs-header-left">
+            <div className="cs-eyebrow"><Sparkles size={11} /> Gestion des clients</div>
+            <h1 className="cs-title">Clients <em>du cabinet</em></h1>
+            <p className="cs-subtitle">Gérez et consultez le portefeuille clients du Cabinet Hajaij</p>
+          </div>
+          <button className="cs-header-btn" onClick={() => navigate('/secretaire/clients/nouveau')}>
+            <UserPlus size={15} /> Nouveau client
+          </button>
+        </div>
+
+        <div className="cs-header-divider" />
+
+        <div className="cs-header-stats">
+          <div className="cs-hstat">
+            <span className="cs-hstat-number">{clients.length}</span>
+            <span className="cs-hstat-label">Total clients</span>
+          </div>
+          <div className="cs-hstat-sep" />
+          <div className="cs-hstat">
+            <span className="cs-hstat-number">{filtered.length}</span>
+            <span className="cs-hstat-label">Résultats affichés</span>
+          </div>
+          <div className="cs-hstat-sep" />
+          <div className="cs-hstat">
+            <span className="cs-hstat-number">{clients.filter(c => c.statut !== 'Inactif').length}</span>
+            <span className="cs-hstat-label">Clients actifs</span>
+          </div>
+          <div className="cs-hstat-sep" />
+          <div className="cs-hstat">
+            <span className="cs-hstat-number">{clients.filter(c => c.statut === 'Inactif').length}</span>
+            <span className="cs-hstat-label">Inactifs</span>
+          </div>
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="cs-kpis">
-        <div className="cs-kpi cs-kpi-blue">
-          <div className="cs-kpi-ic"><Users size={18} /></div>
-          <div>
-            <div className="cs-kpi-n">{clients.length}</div>
-            <div className="cs-kpi-l">Total clients</div>
-          </div>
-        </div>
-        <div className="cs-kpi cs-kpi-green">
-          <div className="cs-kpi-ic"><Users size={18} /></div>
-          <div>
-            <div className="cs-kpi-n">{filtered.length}</div>
-            <div className="cs-kpi-l">Résultats affichés</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Toolbar */}
+      {/* ── TOOLBAR ── */}
       <div className="cs-toolbar">
         <div className="cs-search">
           <Search size={15} className="cs-search-ic" />
@@ -82,19 +97,20 @@ export default function ClientsSecretaire() {
             </button>
           )}
         </div>
-        <span className="cs-count">
-          {filtered.length} client{filtered.length !== 1 ? 's' : ''}
-        </span>
+        <span className="cs-count">{filtered.length} client{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
-      {/* Content */}
+      {/* ── CONTENT ── */}
       {loading ? (
-        <div className="cs-loading">Chargement…</div>
+        <div className="cs-loading">
+          <div className="cs-spinner" />
+          <span>Chargement des clients…</span>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="cs-empty">
-          <UserX size={40} className="cs-empty-ic" />
-          <h3>Aucun client trouvé</h3>
-          <p>Essayez de modifier vos critères de recherche</p>
+          <div className="cs-empty-icon"><UserX size={28} /></div>
+          <p className="cs-empty-title">Aucun client trouvé</p>
+          <p className="cs-empty-sub">Essayez de modifier vos critères de recherche</p>
         </div>
       ) : (
         <div className="cs-grid">
@@ -115,25 +131,22 @@ export default function ClientsSecretaire() {
 
               <div className="cs-card-info">
                 <div className="cs-info-row">
-                  <Phone size={13} />
-                  <span>{client.tel || '—'}</span>
+                  <Phone size={13} /><span>{client.tel || '—'}</span>
                 </div>
                 <div className="cs-info-row">
-                  <CreditCard size={13} />
-                  <span>{client.CIN || client.cin || '—'}</span>
+                  <CreditCard size={13} /><span>{client.CIN || client.cin || '—'}</span>
                 </div>
                 <div className="cs-info-row">
-                  <Calendar size={13} />
-                  <span>{fmtDate(client.date_naissance)}</span>
+                  <Calendar size={13} /><span>{fmtDate(client.date_naissance)}</span>
                 </div>
               </div>
 
               <div className="cs-card-actions">
-                <button className="cs-btn cs-btn-outline" onClick={() => setSelected(client)}>
+                <button className="cs-btn-ghost" onClick={() => setSelected(client)}>
                   <Eye size={14} /> Aperçu
                 </button>
-                <button className="cs-btn cs-btn-primary" onClick={() => navigate(`/secretaire/clients/${client.idu}`)}>
-                  <ArrowRight size={14} /> Détails
+                <button className="cs-btn-primary" onClick={() => navigate(`/secretaire/clients/${client.idu}`)}>
+                  Détails <ArrowRight size={14} />
                 </button>
               </div>
             </div>
@@ -141,7 +154,7 @@ export default function ClientsSecretaire() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* ── MODAL ── */}
       {selected && (
         <>
           <div className="cs-scrim" onClick={() => setSelected(null)} />
@@ -155,7 +168,7 @@ export default function ClientsSecretaire() {
               </div>
               <div className="cs-modal-id">
                 <h2 className="cs-modal-name">{selected.prenom} {selected.nom}</h2>
-                <p className="cs-modal-sub">Client</p>
+                <p className="cs-modal-sub">Client · Cabinet Hajaij</p>
               </div>
               <button className="cs-modal-close" onClick={() => setSelected(null)}>
                 <X size={16} />
@@ -164,34 +177,20 @@ export default function ClientsSecretaire() {
 
             <div className="cs-modal-body">
               <div className="cs-modal-grid">
-                <div className="cs-minfo">
-                  <div className="cs-minfo-ic"><CreditCard size={15} /></div>
-                  <div>
-                    <label>CIN</label>
-                    <p>{selected.CIN || selected.cin || '—'}</p>
+                {[
+                  { Icon: CreditCard, label: 'CIN',               value: selected.CIN || selected.cin || '—' },
+                  { Icon: Phone,      label: 'Téléphone',          value: selected.tel || '—'                  },
+                  { Icon: Mail,       label: 'Email',              value: selected.email || '—'                },
+                  { Icon: Calendar,   label: 'Date de naissance',  value: fmtDate(selected.date_naissance)     },
+                ].map(({ Icon, label, value }) => (
+                  <div key={label} className="cs-minfo">
+                    <div className="cs-minfo-ic"><Icon size={15} /></div>
+                    <div>
+                      <label>{label}</label>
+                      <p>{value}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="cs-minfo">
-                  <div className="cs-minfo-ic"><Phone size={15} /></div>
-                  <div>
-                    <label>Téléphone</label>
-                    <p>{selected.tel || '—'}</p>
-                  </div>
-                </div>
-                <div className="cs-minfo">
-                  <div className="cs-minfo-ic"><Mail size={15} /></div>
-                  <div>
-                    <label>Email</label>
-                    <p>{selected.email || '—'}</p>
-                  </div>
-                </div>
-                <div className="cs-minfo">
-                  <div className="cs-minfo-ic"><Calendar size={15} /></div>
-                  <div>
-                    <label>Date de naissance</label>
-                    <p>{fmtDate(selected.date_naissance)}</p>
-                  </div>
-                </div>
+                ))}
                 <div className="cs-minfo cs-minfo-full">
                   <div className="cs-minfo-ic"><MapPin size={15} /></div>
                   <div>
@@ -204,11 +203,8 @@ export default function ClientsSecretaire() {
 
             <div className="cs-modal-ft">
               <button className="cs-btn-cancel" onClick={() => setSelected(null)}>Fermer</button>
-              <button
-                className="cs-btn cs-btn-primary"
-                onClick={() => navigate(`/secretaire/clients/${selected.idu}`)}
-              >
-                <ArrowRight size={14} /> Plus de détails
+              <button className="cs-btn-primary" onClick={() => navigate(`/secretaire/clients/${selected.idu}`)}>
+                Plus de détails <ArrowRight size={14} />
               </button>
             </div>
           </div>

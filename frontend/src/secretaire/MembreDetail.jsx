@@ -1,113 +1,95 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getUser, getLawyerByUser, updateUser, updateLawyer } from '../api';
+import {
+  ArrowLeft, Edit2, Mail, Phone, MapPin, Scale,
+  Building2, Hash, Check, UserX, Sparkles, X,
+  BadgeCheck, Globe,
+} from 'lucide-react';
+import { getLawyer, updateUser, updateLawyer } from '../api';
 import './Membredetail.css';
 
-const MembreDetail = () => {
+const API_BASE = 'http://localhost:8081';
+
+export default function MembreDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [membre, setMembre] = useState(null);
-  const [lawyerId, setLawyerId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showEdit, setShowEdit] = useState(false);
-  const [editForm, setEditForm] = useState({});
+  const [membre,     setMembre]     = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [showEdit,   setShowEdit]   = useState(false);
+  const [editForm,   setEditForm]   = useState({});
   const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const userRes = await getUser(id);
-        const u = userRes.data;
-        // Try to get lawyer-specific info (optional)
-        let specialite = '—';
-        let barreau = '—';
-        let bar_registration_num = '—';
-        try {
-          const lawyerRes = await getLawyerByUser(id);
-          const l = lawyerRes.data;
-          specialite = l.specialite || '—';
-          barreau = l.bureau || '—';
-          bar_registration_num = l.bar_registration_num || '—';
-          setLawyerId(l.idl);
-        } catch (_) { /* no lawyer record for this user */ }
-
+    getLawyer(id)
+      .then(res => {
+        const l = res.data;
         setMembre({
-          id: u.idu,
-          nom: u.nom || '',
-          prenom: u.prenom || '',
-          titre: `Maître ${u.prenom || ''} ${u.nom || ''}`.trim(),
-          specialite,
-          barreau,
-          anneeInscription: bar_registration_num,
-          email: u.email || '',
-          tel: u.tel || '—',
-          adresse: u.adresse || '—',
-          statut: u.statut || 'Actif',
-          affairesEnCours: [],
-          audiences: [],
-          formations: [],
+          idl:        l.idl,
+          userId:     l.user_id,
+          nom:        l.nom        || '',
+          prenom:     l.prenom     || '',
+          email:      l.email      || '',
+          tel:        l.tel        || '—',
+          adresse:    l.adresse    || '—',
+          statut:     l.statut     || 'Actif',
+          specialite: l.specialite || '—',
+          barreau:    l.bureau     || '—',
+          region:     l.region     || '—',
+          numBarreau: l.bar_registration_num || '—',
+          telBureau:  l.tel_bureau || '—',
+          photoUrl:   l.photo_url ? `${API_BASE}${l.photo_url}` : null,
         });
-        setLoading(false);
-      } catch (_) {
-        setLoading(false);
-      }
-    };
-    fetchData();
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [id]);
-
-  if (loading) {
-    return (
-      <div className="membre-detail-page">
-        <p style={{ padding: '2rem' }}>Chargement...</p>
-      </div>
-    );
-  }
-
-  if (!membre) {
-    return (
-      <div className="membre-detail-page">
-        <div className="not-found">
-          <i className="fas fa-user-slash"></i>
-          <h2>Membre non trouvé</h2>
-          <button className="btn-back" onClick={() => navigate('/secretaire/barreau')}>
-            <i className="fas fa-arrow-left"></i> Retour
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const getStatusClass = (status) => status === 'Actif' ? 'status-actif' : 'status-inactif';
 
   const openEdit = () => {
     setEditForm({
-      nom: membre.nom, prenom: membre.prenom, email: membre.email,
-      tel: membre.tel === '—' ? '' : membre.tel,
-      adresse: membre.adresse === '—' ? '' : membre.adresse,
+      nom:        membre.nom,
+      prenom:     membre.prenom,
+      email:      membre.email,
+      tel:        membre.tel        === '—' ? '' : membre.tel,
+      adresse:    membre.adresse    === '—' ? '' : membre.adresse,
       specialite: membre.specialite === '—' ? '' : membre.specialite,
-      barreau: membre.barreau === '—' ? '' : membre.barreau,
-      bar_registration_num: membre.anneeInscription === '—' ? '' : membre.anneeInscription,
+      barreau:    membre.barreau    === '—' ? '' : membre.barreau,
+      region:     membre.region     === '—' ? '' : membre.region,
+      numBarreau: membre.numBarreau === '—' ? '' : membre.numBarreau,
+      telBureau:  membre.telBureau  === '—' ? '' : membre.telBureau,
     });
     setShowEdit(true);
   };
 
-  const handleEditSubmit = async (e) => {
+  const handleEditSubmit = async e => {
     e.preventDefault();
     setEditSaving(true);
     try {
-      const userRes = await updateUser(id, { nom: editForm.nom, prenom: editForm.prenom, email: editForm.email, tel: editForm.tel, adresse: editForm.adresse });
-      const u = userRes.data;
-      if (lawyerId) {
-        await updateLawyer(lawyerId, { specialite: editForm.specialite, bureau: editForm.barreau, bar_registration_num: editForm.bar_registration_num });
+      if (membre.userId) {
+        await updateUser(membre.userId, {
+          nom: editForm.nom, prenom: editForm.prenom,
+          email: editForm.email, tel: editForm.tel, adresse: editForm.adresse,
+        });
       }
+      await updateLawyer(id, {
+        specialite:        editForm.specialite,
+        bureau:            editForm.barreau,
+        region:            editForm.region,
+        bar_registration_num: editForm.numBarreau,
+        tel_bureau:        editForm.telBureau,
+      });
       setMembre(prev => ({
         ...prev,
-        nom: u.nom || prev.nom, prenom: u.prenom || prev.prenom,
-        titre: `Maître ${u.prenom || ''} ${u.nom || ''}`.trim(),
-        email: u.email || prev.email, tel: u.tel || prev.tel, adresse: u.adresse || prev.adresse,
+        nom:        editForm.nom        || prev.nom,
+        prenom:     editForm.prenom     || prev.prenom,
+        email:      editForm.email      || prev.email,
+        tel:        editForm.tel        || prev.tel,
+        adresse:    editForm.adresse    || prev.adresse,
         specialite: editForm.specialite || prev.specialite,
-        barreau: editForm.barreau || prev.barreau,
-        anneeInscription: editForm.bar_registration_num || prev.anneeInscription,
+        barreau:    editForm.barreau    || prev.barreau,
+        region:     editForm.region     || prev.region,
+        numBarreau: editForm.numBarreau || prev.numBarreau,
+        telBureau:  editForm.telBureau  || prev.telBureau,
       }));
       setShowEdit(false);
     } catch (err) {
@@ -117,161 +99,231 @@ const MembreDetail = () => {
     }
   };
 
-  return (
-    <div className="membre-detail-page">
+  /* ── Loading ── */
+  if (loading) return (
+    <div className="md">
+      <div className="md-loading">
+        <div className="md-spinner" />
+        <span>Chargement du profil…</span>
+      </div>
+    </div>
+  );
 
-      {/* HEADER */}
-      <div className="detail-header">
-        <button className="btn-back" onClick={() => navigate('/secretaire/barreau')}>
-          <i className="fas fa-arrow-left"></i> Retour
+  /* ── Not found ── */
+  if (!membre) return (
+    <div className="md">
+      <div className="md-notfound">
+        <div className="md-notfound-icon"><UserX size={28} /></div>
+        <h2>Membre non trouvé</h2>
+        <button className="md-btn-back" onClick={() => navigate('/secretaire/barreau')}>
+          <ArrowLeft size={14} /> Retour
         </button>
+      </div>
+    </div>
+  );
 
-        <div className="detail-title-section">
-          <div className="detail-avatar-large">
-            {membre.prenom.charAt(0)}{membre.nom.charAt(0)}
+  const isActif = membre.statut === 'Actif';
+  const ini     = `${(membre.prenom||'?')[0]}${(membre.nom||'?')[0]}`.toUpperCase();
+
+  return (
+    <div className="md">
+
+      {/* ── BACK ── */}
+      <button className="md-btn-back" onClick={() => navigate('/secretaire/barreau')}>
+        <ArrowLeft size={14} /> Retour aux membres
+      </button>
+
+      {/* ── PROFILE BANNER ── */}
+      <div className="md-banner">
+        <div className="md-banner-blob" />
+        <div className="md-banner-left">
+          <div className="md-avatar">
+            {membre.photoUrl ? <img src={membre.photoUrl} alt="" /> : ini}
           </div>
-          <div>
-            <h1 className="detail-title">{membre.titre}</h1>
-            <p style={{ fontSize: '1.125rem', margin: '0.5rem 0', color: '#64748b' }}>
-              {membre.specialite}
-            </p>
-            <span className={`detail-status ${getStatusClass(membre.statut)}`}>
-              {membre.statut}
-            </span>
+          <div className="md-banner-info">
+            <div className="md-eyebrow"><Sparkles size={11} /> Membre du Barreau</div>
+            <h1 className="md-name">Me. {membre.prenom} {membre.nom}</h1>
+            <div className="md-banner-chips">
+              <span className="md-spec-chip">
+                {membre.specialite !== '—' ? membre.specialite : 'Avocat'}
+              </span>
+              <span className={`md-status ${isActif ? 'md-status-on' : 'md-status-off'}`}>
+                {membre.statut}
+              </span>
+            </div>
           </div>
         </div>
-
-        <div className="detail-actions">
-          <a href={`mailto:${membre.email}`} className="btn-action btn-email">
-            <i className="fas fa-envelope"></i> Envoyer un email
+        <div className="md-banner-actions">
+          <a href={`mailto:${membre.email}`} className="md-btn md-btn-outline">
+            <Mail size={14} /> Email
           </a>
-          <button className="btn-action btn-edit" onClick={openEdit}>
-            <i className="fas fa-edit"></i> Modifier
+          <button className="md-btn md-btn-primary" onClick={openEdit}>
+            <Edit2 size={14} /> Modifier
           </button>
         </div>
       </div>
 
-      {/* INFORMATIONS PROFESSIONNELLES */}
-      <div className="detail-section">
-        <h2 className="section-title">
-          <i className="fas fa-info-circle"></i> Informations professionnelles
-        </h2>
-        <div className="info-grid">
-          <div className="info-card">
-            <i className="fas fa-balance-scale"></i>
-            <div><label>Spécialité</label><p>{membre.specialite}</p></div>
-          </div>
-          <div className="info-card">
-            <i className="fas fa-landmark"></i>
-            <div><label>Barreau</label><p>{membre.barreau}</p></div>
-          </div>
-          <div className="info-card">
-            <i className="fas fa-id-card"></i>
-            <div><label>N° Barreau</label><p>{membre.anneeInscription}</p></div>
-          </div>
-          <div className="info-card">
-            <i className="fas fa-phone"></i>
-            <div><label>Téléphone</label><p>{membre.tel}</p></div>
-          </div>
-          <div className="info-card">
-            <i className="fas fa-envelope"></i>
-            <div><label>Email</label><p>{membre.email}</p></div>
-          </div>
-          <div className="info-card info-full">
-            <i className="fas fa-map-marker-alt"></i>
-            <div><label>Adresse</label><p>{membre.adresse}</p></div>
-          </div>
-        </div>
-      </div>
+      {/* ── INFO CARDS ── */}
+      <div className="md-content">
 
-      {/* STATS */}
-      <div className="stats-row">
-        <div className="stat-card stat-dossiers">
-          <div className="stat-icon"><i className="fas fa-folder-open"></i></div>
-          <div className="stat-content">
-            <span className="stat-number">{membre.affairesEnCours.length}</span>
-            <span className="stat-label">Affaires en cours</span>
+        {/* Professional info */}
+        <div className="md-card">
+          <div className="md-card-head">
+            <h2 className="md-card-title">Informations professionnelles</h2>
           </div>
-        </div>
-        <div className="stat-card stat-rdv">
-          <div className="stat-icon"><i className="fas fa-calendar-alt"></i></div>
-          <div className="stat-content">
-            <span className="stat-number">{membre.audiences.length}</span>
-            <span className="stat-label">Audiences</span>
-          </div>
-        </div>
-        <div className="stat-card stat-paiements">
-          <div className="stat-icon"><i className="fas fa-graduation-cap"></i></div>
-          <div className="stat-content">
-            <span className="stat-number">{membre.formations.length}</span>
-            <span className="stat-label">Formations</span>
-          </div>
-        </div>
-      </div>
-
-      {/* AFFAIRES */}
-      <div className="detail-section">
-        <h2 className="section-title"><i className="fas fa-folder-open"></i> Affaires en cours</h2>
-        <div className="empty-state">
-          <i className="fas fa-folder"></i>
-          <p>Aucune affaire en cours</p>
-        </div>
-      </div>
-
-      {/* AUDIENCES */}
-      <div className="detail-section">
-        <h2 className="section-title"><i className="fas fa-calendar-alt"></i> Audiences à venir</h2>
-        <div className="empty-state">
-          <i className="fas fa-calendar"></i>
-          <p>Aucune audience programmée</p>
-        </div>
-      </div>
-
-      {/* ── Modal Modifier ── */}
-      {showEdit && (
-        <div className="modal-overlay" onClick={() => setShowEdit(false)}>
-          <div className="modal-panel" style={{ maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-hero" style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d5a9e)' }}>
-              <div className="modal-identity">
-                <h2><i className="fas fa-edit" style={{ marginRight: '0.5rem' }}></i>Modifier — {membre.titre}</h2>
+          <div className="md-info-grid">
+            <div className="md-info-item">
+              <div className="md-info-ic"><Scale size={14} /></div>
+              <div>
+                <label>Spécialité</label>
+                <p>{membre.specialite}</p>
               </div>
-              <button className="modal-close-btn" onClick={() => setShowEdit(false)}><i className="fas fa-times"></i></button>
             </div>
-            <form onSubmit={handleEditSubmit}>
-              <div className="modal-body-scroll" style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                {[['nom','Nom'],['prenom','Prénom'],['email','Email'],['tel','Téléphone'],['adresse','Adresse']].map(([field, label]) => (
-                  <div key={field} style={{ display:'flex', flexDirection:'column', gap:'0.3rem', gridColumn: (field==='email'||field==='adresse') ? '1/-1' : undefined }}>
-                    <label style={{ fontSize:'0.8rem', fontWeight:600, color:'#64748b' }}>{label}</label>
-                    <input className="form-input" type={field==='email'?'email':'text'} value={editForm[field]||''} onChange={e => setEditForm(p=>({...p,[field]:e.target.value}))} />
-                  </div>
-                ))}
-                <div style={{ gridColumn: '1/-1', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', marginTop: '0.5rem' }}>
-                  <p style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', marginBottom: '0.75rem' }}>Informations avocat</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    {[['specialite','Spécialité'],['barreau','Barreau'],['bar_registration_num','N° Barreau']].map(([field, label]) => (
-                      <div key={field} style={{ display:'flex', flexDirection:'column', gap:'0.3rem' }}>
-                        <label style={{ fontSize:'0.8rem', fontWeight:600, color:'#64748b' }}>{label}</label>
-                        <input className="form-input" type="text" value={editForm[field]||''} onChange={e => setEditForm(p=>({...p,[field]:e.target.value}))} />
-                      </div>
-                    ))}
-                  </div>
+            <div className="md-info-item">
+              <div className="md-info-ic"><Building2 size={14} /></div>
+              <div>
+                <label>Barreau</label>
+                <p>{membre.barreau}</p>
+              </div>
+            </div>
+            <div className="md-info-item">
+              <div className="md-info-ic"><Hash size={14} /></div>
+              <div>
+                <label>N° Barreau</label>
+                <p>{membre.numBarreau}</p>
+              </div>
+            </div>
+            <div className="md-info-item">
+              <div className="md-info-ic"><Globe size={14} /></div>
+              <div>
+                <label>Région</label>
+                <p>{membre.region}</p>
+              </div>
+            </div>
+            <div className="md-info-item">
+              <div className="md-info-ic"><Phone size={14} /></div>
+              <div>
+                <label>Téléphone</label>
+                <p>{membre.tel}</p>
+              </div>
+            </div>
+            <div className="md-info-item">
+              <div className="md-info-ic"><Phone size={14} /></div>
+              <div>
+                <label>Tél. bureau</label>
+                <p>{membre.telBureau}</p>
+              </div>
+            </div>
+            <div className="md-info-item md-info-full">
+              <div className="md-info-ic"><Mail size={14} /></div>
+              <div>
+                <label>Email</label>
+                <p>{membre.email}</p>
+              </div>
+            </div>
+            {membre.adresse !== '—' && (
+              <div className="md-info-item md-info-full">
+                <div className="md-info-ic"><MapPin size={14} /></div>
+                <div>
+                  <label>Adresse</label>
+                  <p>{membre.adresse}</p>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="mfooter-btn mfooter-close" onClick={() => setShowEdit(false)}>
-                  <i className="fas fa-times"></i> Annuler
-                </button>
-                <button type="submit" className="mfooter-btn mfooter-email" disabled={editSaving}>
-                  <i className="fas fa-save"></i> {editSaving ? 'Enregistrement...' : 'Enregistrer'}
+            )}
+          </div>
+        </div>
+
+        {/* Badge card */}
+        <div className="md-card md-card-badge-panel">
+          <div className="md-badge-hero">
+            <div className="md-badge-avatar">
+              {membre.photoUrl ? <img src={membre.photoUrl} alt="" /> : ini}
+            </div>
+            <div className="md-badge-name">Me. {membre.prenom} {membre.nom}</div>
+            <div className="md-badge-spec">{membre.specialite !== '—' ? membre.specialite : 'Avocat'}</div>
+            {membre.numBarreau !== '—' && (
+              <div className="md-badge-num">
+                <BadgeCheck size={13} /> {membre.numBarreau}
+              </div>
+            )}
+            <span className={`md-status ${isActif ? 'md-status-on' : 'md-status-off'}`}>
+              {membre.statut}
+            </span>
+          </div>
+          {membre.barreau !== '—' && (
+            <div className="md-badge-footer">
+              <Building2 size={12} />
+              <span>Barreau de {membre.barreau}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── EDIT MODAL ── */}
+      {showEdit && createPortal(
+        <div className="md-scrim" onClick={() => setShowEdit(false)}>
+          <div className="md-modal" onClick={e => e.stopPropagation()}>
+            <div className="md-modal-head">
+              <div className="md-modal-head-icon">
+                <Edit2 size={18} />
+              </div>
+              <div className="md-modal-head-text">
+                <h2>Modifier le profil</h2>
+                <p>Me. {membre.prenom} {membre.nom}</p>
+              </div>
+              <button className="md-modal-close" onClick={() => setShowEdit(false)}><X size={14} /></button>
+            </div>
+            <form onSubmit={handleEditSubmit}>
+              <div className="md-modal-body">
+                <p className="md-modal-section-label">Informations personnelles</p>
+                {[
+                  ['prenom',  'Prénom',    false],
+                  ['nom',     'Nom',       false],
+                  ['email',   'Email',     true ],
+                  ['tel',     'Téléphone', true ],
+                  ['adresse', 'Adresse',   true ],
+                ].map(([field, label, full]) => (
+                  <div key={field} className={`md-field${full ? ' md-field-full' : ''}`}>
+                    <label>{label}</label>
+                    <input
+                      type={field === 'email' ? 'email' : 'text'}
+                      value={editForm[field] || ''}
+                      onChange={e => setEditForm(p => ({ ...p, [field]: e.target.value }))}
+                      placeholder={label}
+                    />
+                  </div>
+                ))}
+
+                <p className="md-modal-section-label" style={{ marginTop: '.75rem' }}>Informations avocat</p>
+                {[
+                  ['specialite', 'Spécialité',  false],
+                  ['barreau',    'Barreau',      false],
+                  ['numBarreau', 'N° Barreau',   false],
+                  ['region',     'Région',       false],
+                  ['telBureau',  'Tél. bureau',  true ],
+                ].map(([field, label, full]) => (
+                  <div key={field} className={`md-field${full ? ' md-field-full' : ''}`}>
+                    <label>{label}</label>
+                    <input
+                      type="text"
+                      value={editForm[field] || ''}
+                      onChange={e => setEditForm(p => ({ ...p, [field]: e.target.value }))}
+                      placeholder={label}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="md-modal-ft">
+                <button type="button" className="md-btn-cancel" onClick={() => setShowEdit(false)}>Annuler</button>
+                <button type="submit" className="md-btn-save" disabled={editSaving}>
+                  {editSaving ? 'Enregistrement…' : <><Check size={13} /> Enregistrer</>}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-
     </div>
   );
-};
-
-export default MembreDetail;
+}

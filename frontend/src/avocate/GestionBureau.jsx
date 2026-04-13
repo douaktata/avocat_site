@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Phone, DoorOpen, Plus, Trash2, X, UserCheck,
-  PhoneCall, CreditCard, Building2, Clock,
+  PhoneCall, CreditCard, Clock,
   Search, Users, TrendingUp, CalendarDays,
   CheckCircle2, Sparkles
 } from 'lucide-react';
@@ -16,7 +16,6 @@ import './GestionBureau.css';
 /* ── utils ──────────────────────────────────────────── */
 const fmtTime  = d => d ? new Date(d).toLocaleTimeString('fr-FR',  { hour:'2-digit', minute:'2-digit' }) : '—';
 const fmtDate  = d => d ? new Date(d).toLocaleDateString('fr-FR',  { weekday:'short', day:'2-digit', month:'short' }) : '—';
-const fmtFull  = d => d ? new Date(d).toLocaleString('fr-FR', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
 const isToday  = d => d && new Date(d).toDateString() === new Date().toDateString();
 const uid      = () => { try { return JSON.parse(localStorage.getItem('user'))?.idu||null; } catch { return null; } };
 const partsToISO = p => (p.day && p.month && p.year) ? `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}T${p.hour||'00'}:${p.minute||'00'}` : null;
@@ -37,7 +36,7 @@ export default function GestionBureau() {
   const [appels,  setAppels]  = useState([]);
   const [pres,    setPres]    = useState([]);
   const [loading, setLoading] = useState(true);
-  const [panel,   setPanel]   = useState(null);   // null | 'appel' | 'presence'
+  const [panel,   setPanel]   = useState(null);
   const [saving,  setSaving]  = useState(false);
   const [q,       setQ]       = useState('');
 
@@ -115,27 +114,25 @@ export default function GestionBureau() {
   const fA = appels.filter(a=>!lq||(a.caller_full_name||'').toLowerCase().includes(lq)||(a.phone_number||'').includes(lq)||(a.call_reason||'').toLowerCase().includes(lq));
   const fP = pres.filter(p=>!lq||(`${p.visitorLastname} ${p.visitorName}`).toLowerCase().includes(lq)||(p.visitorCin||'').toLowerCase().includes(lq)||(p.reason||'').toLowerCase().includes(lq));
 
-  const kpis = [
-    { label:'Appels total',         val:appels.length,                                    icon:<Phone size={18}/>,       color:'blue'   },
-    { label:"Aujourd'hui",          val:appels.filter(a=>isToday(a.call_date)).length,    icon:<TrendingUp size={18}/>,   color:'sky'    },
-    { label:'Présences total',      val:pres.length,                                      icon:<DoorOpen size={18}/>,    color:'violet' },
-    { label:"Présences auj.",        val:pres.filter(p=>isToday(p.arrivalTime)).length,   icon:<CalendarDays size={18}/>, color:'fuchsia'},
-    { label:'Clients reconnus',     val:[...appels.filter(mA),...pres.filter(mP)].length, icon:<Users size={18}/>,       color:'emerald'},
-  ];
+  const todayAppels   = appels.filter(a=>isToday(a.call_date)).length;
+  const todayPres     = pres.filter(p=>isToday(p.arrivalTime)).length;
+  const clientsConnus = [...appels.filter(mA),...pres.filter(mP)].length;
 
   /* ── RENDER ─────────────────────────────────────── */
   return (
     <div className="gb">
 
-      {/* ═══ HERO ═════════════════════════════════════ */}
-      <div className="gb-hero">
-        <div className="gb-hero-glow"/>
-        <div className="gb-hero-top">
-          <div className="gb-hero-badge"><Sparkles size={11}/> Bureau administratif</div>
-          <h1 className="gb-hero-h1">Gestion du Bureau</h1>
-          <p className="gb-hero-p">Centralisez et suivez chaque interaction du cabinet — appels entrants et présences des visiteurs.</p>
+      {/* ═══ HEADER BANNER ════════════════════════════ */}
+      <div className="gb-header">
+        <div className="gb-header-blob" />
+
+        <div className="gb-header-top">
+          <div className="gb-eyebrow"><Sparkles size={11}/> Bureau administratif</div>
+          <h1 className="gb-title">Gestion du <em>Bureau</em></h1>
+          <p className="gb-subtitle">Centralisez appels entrants et présences des visiteurs du cabinet.</p>
         </div>
-        <div className="gb-hero-btns">
+
+        <div className="gb-header-actions">
           <button className="gb-btn-outline" onClick={()=>setPanel('appel')}>
             <Phone size={14}/> Enregistrer un appel
           </button>
@@ -144,51 +141,70 @@ export default function GestionBureau() {
           </button>
         </div>
 
-        {/* KPI strip */}
-        <div className="gb-kpis">
-          {kpis.map((k,i)=>(
-            <div key={i} className={`gb-kpi gb-kpi-${k.color}`}>
-              <div className="gb-kpi-ic">{k.icon}</div>
-              <div>
-                <div className="gb-kpi-n">{k.val}</div>
-                <div className="gb-kpi-l">{k.label}</div>
-              </div>
-            </div>
-          ))}
+        <div className="gb-header-divider" />
+
+        <div className="gb-header-stats">
+          <div className="gb-hstat">
+            <span className="gb-hstat-number">{appels.length}</span>
+            <span className="gb-hstat-label">Appels total</span>
+          </div>
+          <div className="gb-hstat-sep" />
+          <div className="gb-hstat">
+            <span className="gb-hstat-number gb-hstat-blue">{todayAppels}</span>
+            <span className="gb-hstat-label">Appels auj.</span>
+          </div>
+          <div className="gb-hstat-sep" />
+          <div className="gb-hstat">
+            <span className="gb-hstat-number gb-hstat-violet">{pres.length}</span>
+            <span className="gb-hstat-label">Présences total</span>
+          </div>
+          <div className="gb-hstat-sep" />
+          <div className="gb-hstat">
+            <span className="gb-hstat-number gb-hstat-amber">{todayPres}</span>
+            <span className="gb-hstat-label">Présences auj.</span>
+          </div>
+          <div className="gb-hstat-sep" />
+          <div className="gb-hstat">
+            <span className="gb-hstat-number gb-hstat-green">{clientsConnus}</span>
+            <span className="gb-hstat-label">Clients reconnus</span>
+          </div>
         </div>
       </div>
 
       {/* ═══ TOOLBAR ══════════════════════════════════ */}
       <div className="gb-bar">
         <div className="gb-tabs">
-          <button className={`gb-t${tab==='appels'?' a':''}`} onClick={()=>{setTab('appels');setQ('');}}>
-            <span className={`gb-t-dot blue`}/>
+          <button className={`gb-tab${tab==='appels'?' active':''}`} onClick={()=>{setTab('appels');setQ('');}}>
+            <span className="gb-tab-dot blue"/>
             Journal d'Appels
-            <span className="gb-t-n">{appels.length}</span>
+            <span className="gb-tab-count">{appels.length}</span>
           </button>
-          <button className={`gb-t${tab==='presence'?' a':''}`} onClick={()=>{setTab('presence');setQ('');}}>
-            <span className={`gb-t-dot violet`}/>
+          <button className={`gb-tab${tab==='presence'?' active':''}`} onClick={()=>{setTab('presence');setQ('');}}>
+            <span className="gb-tab-dot violet"/>
             Journal de Présence
-            <span className="gb-t-n">{pres.length}</span>
+            <span className="gb-tab-count">{pres.length}</span>
           </button>
         </div>
         <div className="gb-search">
-          <Search size={14}/>
+          <Search size={14} className="gb-search-ic"/>
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher…"/>
-          {q && <button onClick={()=>setQ('')}><X size={12}/></button>}
+          {q && <button className="gb-clear" onClick={()=>setQ('')}><X size={12}/></button>}
         </div>
       </div>
 
       {/* ═══ CONTENT ══════════════════════════════════ */}
       {loading ? (
-        <div className="gb-load"><span className="gb-ring"/><span>Chargement…</span></div>
+        <div className="gb-loading">
+          <div className="gb-spinner"/>
+          <span>Chargement…</span>
+        </div>
       ) : (
         <div className="gb-feed">
           {(tab==='appels' ? fA : fP).length === 0 ? (
-            <div className="gb-void">
-              <div className="gb-void-ic">{tab==='appels'?<Phone size={26}/>:<DoorOpen size={26}/>}</div>
-              <strong>{q?'Aucun résultat':`Aucun ${tab==='appels'?'appel':'présence'} enregistré`}</strong>
-              <span>{q?'Essayez un autre terme':`Cliquez sur le bouton en haut pour commencer`}</span>
+            <div className="gb-empty">
+              <div className="gb-empty-icon">{tab==='appels'?<Phone size={28}/>:<DoorOpen size={28}/>}</div>
+              <p className="gb-empty-title">{q?'Aucun résultat':`Aucun ${tab==='appels'?'appel':'présence'} enregistré`}</p>
+              <p className="gb-empty-sub">{q?'Essayez un autre terme':'Cliquez sur le bouton en haut pour commencer'}</p>
             </div>
           ) : tab === 'appels' ? fA.map(a => {
             const client = mA(a);
@@ -196,19 +212,19 @@ export default function GestionBureau() {
             const [bg,fg]= pal(name);
             return (
               <div key={a.id} className="gb-card gb-card-blue">
-                <div className="gb-card-stripe blue"/>
+                <div className="gb-card-bar blue"/>
                 <div className="gb-card-av" style={{background:bg,color:fg}}>{init(name)}</div>
                 <div className="gb-card-body">
                   <div className="gb-card-top">
-                    <div className="gb-card-name">{name}</div>
+                    <span className="gb-card-name">{name}</span>
                     {client && <span className="gb-badge-ok"><CheckCircle2 size={10}/> Client</span>}
-                    {a.phone_number && <span className="gb-badge-phone"><Phone size={10}/> {a.phone_number}</span>}
+                    {a.phone_number && <span className="gb-badge-info"><Phone size={10}/> {a.phone_number}</span>}
                   </div>
                   <p className="gb-card-text">{a.call_reason || <em>Aucun motif renseigné</em>}</p>
                 </div>
                 <div className="gb-card-side">
                   <div className="gb-card-date">{fmtDate(a.call_date)}</div>
-                  <div className="gb-card-time"><Clock size={10}/>{fmtTime(a.call_date)}</div>
+                  <div className="gb-card-time blue"><Clock size={10}/>{fmtTime(a.call_date)}</div>
                   <button className="gb-card-del" onClick={()=>delA(a.id)}><Trash2 size={13}/></button>
                 </div>
               </div>
@@ -219,20 +235,20 @@ export default function GestionBureau() {
             const [bg,fg]= pal(name);
             return (
               <div key={p.id} className="gb-card gb-card-violet">
-                <div className="gb-card-stripe violet"/>
+                <div className="gb-card-bar violet"/>
                 <div className="gb-card-av" style={{background:bg,color:fg}}>{init(name)}</div>
                 <div className="gb-card-body">
                   <div className="gb-card-top">
-                    <div className="gb-card-name">{name}</div>
+                    <span className="gb-card-name">{name}</span>
                     {client && <span className="gb-badge-ok"><CheckCircle2 size={10}/> Client</span>}
-                    {p.visitorCin && <span className="gb-badge-cin"><CreditCard size={10}/> {p.visitorCin}</span>}
+                    {p.visitorCin && <span className="gb-badge-info"><CreditCard size={10}/> {p.visitorCin}</span>}
                     {p.recordedByName && <span className="gb-badge-by">par {p.recordedByName}</span>}
                   </div>
                   <p className="gb-card-text">{p.reason || <em>Aucun motif renseigné</em>}</p>
                 </div>
                 <div className="gb-card-side">
                   <div className="gb-card-date">{fmtDate(p.arrivalTime)}</div>
-                  <div className="gb-card-time"><Clock size={10}/>{fmtTime(p.arrivalTime)}</div>
+                  <div className="gb-card-time violet"><Clock size={10}/>{fmtTime(p.arrivalTime)}</div>
                   <button className="gb-card-del" onClick={()=>delP(p.id)}><Trash2 size={13}/></button>
                 </div>
               </div>
@@ -266,7 +282,7 @@ export default function GestionBureau() {
         <div className="gb-scrim" onClick={closePanel}/>
         <div className={`gb-panel gb-panel-${panel==='appel'?'blue':'violet'}`}>
 
-          {/* ── Panel Header ── */}
+          {/* Panel Header */}
           <div className="gb-ph">
             <div className={`gb-ph-icon gb-ph-icon-${panel==='appel'?'blue':'violet'}`}>
               {panel==='appel'?<Phone size={16}/>:<DoorOpen size={16}/>}
@@ -278,11 +294,10 @@ export default function GestionBureau() {
             <button className="gb-ph-close" onClick={closePanel}><X size={14}/></button>
           </div>
 
-          {/* ── Form ── */}
+          {/* Form */}
           <form className="gb-panel-form" onSubmit={panel==='appel'?submitA:submitP}>
             <div className="gb-panel-body">
 
-              {/* ── Section: Identité ── */}
               <p className="gb-sec-lbl">Identité</p>
               <div className="gb-row2">
                 <div className="gb-f">
@@ -309,7 +324,6 @@ export default function GestionBureau() {
                 </div>
               </div>
 
-              {/* ── Section: Contact ── */}
               <p className="gb-sec-lbl">{panel==='appel'?'Contact & date':'Visite & date'}</p>
               <div className="gb-f">
                 <label>{panel==='appel'?'Numéro de téléphone':'Numéro CIN'}</label>
@@ -353,7 +367,6 @@ export default function GestionBureau() {
                 </div>
               </div>
 
-              {/* ── Section: Motif ── */}
               <p className="gb-sec-lbl">Motif</p>
               <div className="gb-f">
                 <label>Description <span className="gb-req">*</span></label>
@@ -366,7 +379,6 @@ export default function GestionBureau() {
 
             </div>
 
-            {/* ── Footer ── */}
             <div className="gb-panel-ft">
               <span className="gb-ft-hint"><span className="gb-req">*</span> Champs obligatoires</span>
               <div className="gb-ft-btns">

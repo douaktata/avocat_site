@@ -86,7 +86,7 @@ public class SecurityConfig {
                 .requestMatchers("/staff", "/staff/**").hasAnyAuthority("ADMINISTRATEUR", "AVOCAT")
                 .requestMatchers("/roles/**").hasAuthority("ADMINISTRATEUR")
                 .requestMatchers("/user-roles/**").hasAuthority("ADMINISTRATEUR")
-                .requestMatchers("/lawyers/**").hasAuthority("ADMINISTRATEUR")
+                .requestMatchers("/lawyers/**").hasAnyAuthority("ADMINISTRATEUR", "SECRETAIRE", "AVOCAT", "STAGIAIRE")
                 .requestMatchers("/cases/**").hasAnyAuthority("ADMINISTRATEUR", "SECRETAIRE", "AVOCAT", "CLIENT", "STAGIAIRE")
                 .requestMatchers(org.springframework.http.HttpMethod.GET,    "/api/cases/**").hasAnyAuthority("ADMINISTRATEUR", "SECRETAIRE", "AVOCAT", "CLIENT", "STAGIAIRE")
                 .requestMatchers(org.springframework.http.HttpMethod.POST,   "/api/cases/**").hasAnyAuthority("ADMINISTRATEUR", "SECRETAIRE", "AVOCAT", "CLIENT", "STAGIAIRE")

@@ -5,7 +5,7 @@ import { getUser } from '../api';
 import {
   LayoutDashboard, Building2, CalendarClock, CalendarDays,
   UserRound, FolderOpen, Users, CheckSquare, MessageSquare,
-  UserCircle, LogOut, Menu, X, Scale as ScaleIcon,
+  UserCircle, LogOut, Menu, X, Gavel,
 } from 'lucide-react';
 import './LayoutSecretaire.css';
 
@@ -39,8 +39,7 @@ const LayoutSecretaire = () => {
       <aside className={`sidebar ${sidebarActive ? 'active' : ''}`}>
         {/* Logo */}
         <div className="logo">
-          <ScaleIcon size={18} className="sidebar-brand-icon" />
-          <span className="logo-name">JurisHub</span>
+          <img src="/logo.png" alt="JurisHub" className="sidebar-logo-img" />
         </div>
 
         <nav className="nav-container">
@@ -90,6 +89,11 @@ const LayoutSecretaire = () => {
             <li className="nav-item">
               <NavLink to="/secretaire/staff" className={({isActive}) => `nav-link${isActive?' active':''}`} onClick={close}>
                 <Users size={16} /><span>Équipe</span>
+              </NavLink>
+            </li>
+            <li className="nav-item">
+              <NavLink to="/secretaire/barreau" className={({isActive}) => `nav-link${isActive?' active':''}`} onClick={close}>
+                <Gavel size={16} /><span>Membres du Barreau</span>
               </NavLink>
             </li>
 
