@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Get-Content 'C:/Users/douak/AppData/Local/Temp/claude/c--Users-douak-monpremiersite-monpremiersite-avocat-site/3f563f29-7112-4dcc-980f-08793476ab5a/tasks/bhyiuts62.output' -Tail 40\")"
+    ]
+  }
+}

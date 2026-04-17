@@ -6,7 +6,7 @@ import {
   Search, Users, FolderOpen, FileText, Building2, BookOpen,
   CheckSquare, GraduationCap, CheckCircle, Key, Landmark,
   MessageSquare, TrendingUp, UserCircle, Briefcase, LogOut,
-  ChevronDown, X, Menu,
+  ChevronDown, X, Menu, Sparkles,
 } from 'lucide-react';
 import { LogoIcon } from '../components/Logo';
 import './Layout.css';
@@ -89,6 +89,12 @@ const Layout = () => {
       path: '/avocat/tribunaux',
       icon: Landmark,
       label: 'Tribunaux',
+    },
+    {
+      type: 'link',
+      path: '/avocat/contrats',
+      icon: Sparkles,
+      label: 'Générateur IA',
     },
     {
       type: 'link',

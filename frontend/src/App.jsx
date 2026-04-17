@@ -32,6 +32,7 @@ import AffaireDetailav from './avocate/Dossierdetailav';
 import MembreDetailav from './avocate/MembreDetailav';
 import InvoiceList from './avocate/InvoiceList';
 import Tribunaux from './avocate/Tribunaux';
+import GenerateurContrat from './avocate/GenerateurContrat';
 import ClientInvoices from './client/ClientInvoices';
 import MessagerieClient from './client/MessagerieClient';
 import Profile from './Profile';
@@ -148,6 +149,7 @@ function AppRoutes() {
         <Route path="staff" element={<Staffav />} />
         <Route path="staff/:id" element={<StaffDetailav />} />
         <Route path="tribunaux" element={<Tribunaux />} />
+        <Route path="contrats" element={<GenerateurContrat />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 

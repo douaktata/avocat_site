@@ -1,5 +1,6 @@
 package com.example.monpremiersite.service;
 
+import com.example.monpremiersite.dto.FreeSlotDTO;
 import com.example.monpremiersite.entities.*;
 import com.example.monpremiersite.repository.*;
 import org.springframework.stereotype.Service;
@@ -7,7 +8,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -15,12 +16,15 @@ public class ChatContextEnricher {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter SHORT_DATE_FMT = DateTimeFormatter.ofPattern("dd/MM");
 
     private final UserRepository userRepository;
     private final CaseRepository caseRepository;
     private final AppointmentRepository appointmentRepository;
     private final InvoiceRepository invoiceRepository;
     private final AvailableSlotRepository availableSlotRepository;
+    private final AppointmentAgendaService appointmentAgendaService;
 
     public ChatContextEnricher(UserRepository userRepository,
                                 CaseRepository caseRepository,
@@ -33,6 +37,7 @@ public class ChatContextEnricher {
         this.appointmentRepository = appointmentRepository;
         this.invoiceRepository = invoiceRepository;
         this.availableSlotRepository = availableSlotRepository;
+        this.appointmentAgendaService = appointmentAgendaService;
     }
 
     public String getUserPrenom(Long userId) {
@@ -44,47 +49,89 @@ public class ChatContextEnricher {
     }
 
     public String buildSystemPrompt(Long userId) {
-        return buildSystemPrompt(userId, false);
+        return buildSystemPrompt(userId, false, Map.of());
     }
 
     public String buildSystemPrompt(Long userId, boolean isFirstMessage) {
+        return buildSystemPrompt(userId, isFirstMessage, Map.of());
+    }
+
+    public String buildSystemPrompt(Long userId, boolean isFirstMessage, Map<String, String> detectedSlot) {
         User user = userRepository.findById(userId).orElse(null);
         String clientPrenom = user != null && user.getPrenom() != null ? user.getPrenom() : "Client";
-        String clientNom = user != null && user.getNom() != null ? user.getNom() : "";
+        String clientNom    = user != null && user.getNom()    != null ? user.getNom()    : "";
 
-        String casesList = buildCasesList(userId);
-        String appointmentsList = buildAppointmentsList(userId);
+        String todayFormatted = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String casesList         = buildCasesList(userId);
+        String appointmentsList  = buildAppointmentsList(userId);
         String unpaidInvoicesList = buildUnpaidInvoicesList(userId);
         String availableSlotsList = buildAvailableSlotsList();
 
-        String salutation = isFirstMessage
-                ? "NE salue PAS — le message d'accueil est déjà affiché. Attends la question du client."
-                : "Ne dis pas bonjour, ne salue pas. Réponds directement.";
+        String salutationRule = isFirstMessage
+                ? "NE salue PAS — le message de bienvenue est déjà affiché. Attends la question du client."
+                : "Ne répète pas le bonjour. Réponds directement.";
 
-        return "Tu es l'assistant virtuel du cabinet d'avocats JurisHub. Réponds UNIQUEMENT en français.\n\n" +
+        String slotHint = "";
+        if (detectedSlot != null && !detectedSlot.isEmpty()) {
+            slotHint = "\nATTENTION : Le client vient de choisir le créneau suivant (déjà rempli dans 'extracted') :\n" +
+                       "  date_preferee=" + detectedSlot.get("date_preferee") +
+                       ", heure_preferee=" + detectedSlot.get("heure_preferee") + "\n" +
+                       "Ne propose PAS d'autres créneaux. Demande uniquement ce qui manque encore.\n";
+        }
 
-               "CLIENT : " + clientPrenom + " " + clientNom + "\n\n" +
+        return "Tu es l'assistant virtuel intelligent du cabinet d'avocats JurisHub. " +
+               "Tu parles UNIQUEMENT en français. Tu es professionnel, chaleureux et efficace.\n\n" +
 
-               "=== DOSSIERS ===\n" + casesList + "\n\n" +
-               "=== RENDEZ-VOUS ===\n" + appointmentsList + "\n\n" +
-               "=== FACTURES IMPAYÉES ===\n" + unpaidInvoicesList + "\n\n" +
-               "=== CRÉNEAUX DISPONIBLES ===\n" + availableSlotsList + "\n\n" +
+               "=== DATE D'AUJOURD'HUI ===\n" +
+               todayFormatted + "\n" +
+               "Utilise cette date pour calculer 'demain', 'lundi prochain', 'après-demain', etc.\n\n" +
 
-               "=== FLUX STRICT ===\n" +
-               "ÉTAPE 1 — Client demande un RDV → affiche IMMÉDIATEMENT les créneaux ci-dessus en texte, propose 4 suggestions de créneaux.\n" +
-               "ÉTAPE 2 — Client choisit date+heure → extrais date_preferee et heure_preferee, demande type d'affaire + description.\n" +
-               "ÉTAPE 3 — Tu as type_affaire + description + date_preferee + heure_preferee → ready_to_confirm=true, montre récapitulatif.\n" +
-               "ÉTAPE 4 — Client confirme → appointment_confirmed=true.\n\n" +
+               "=== CLIENT CONNECTÉ ===\n" +
+               "Nom : " + clientPrenom + " " + clientNom + "\n" +
+               "Dossiers en cours : " + casesList + "\n" +
+               "Prochains RDV : " + appointmentsList + "\n" +
+               "Factures impayées : " + unpaidInvoicesList + "\n\n" +
 
-               "=== RÈGLES ===\n" +
-               "- " + salutation + "\n" +
-               "- Le champ 'message' est du TEXTE FRANÇAIS UNIQUEMENT. Jamais de JSON, jamais d'accolades { }.\n" +
-               "- 'suggestions' = tableau de strings simples, ex: [\"Lundi 06/04 à 09:00\",\"Mardi 07/04 à 10:00\"]. Max 4.\n" +
-               "- Questions sur dossier/facture → réponds avec les données exactes.\n" +
-               "- Sois concis, max 3 phrases.\n\n" +
+               "=== CRÉNEAUX DISPONIBLES ===\n" +
+               availableSlotsList + "\n" +
+               slotHint + "\n" +
 
-               "FORMAT (JSON strict, RIEN avant ni après) :\n" +
-               "{\"message\":\"...\",\"extracted\":{\"type_affaire\":null,\"description\":null,\"urgence\":null,\"date_preferee\":null,\"heure_preferee\":null},\"ready_to_confirm\":false,\"appointment_confirmed\":false,\"suggestions\":[]}";
+               "=== TYPES D'AFFAIRES RECONNUS ===\n" +
+               "- Divorce (divorce, séparation, garde des enfants, pension alimentaire, partage des biens)\n" +
+               "- Pénal (infraction, plainte, garde à vue, délit, crime, fraude, vol, agression)\n" +
+               "- Droit du travail (licenciement, contrat de travail, employeur, salaire, harcèlement, prud'hommes)\n" +
+               "- Droit immobilier (loyer, bail, propriétaire, locataire, expulsion, copropriété)\n" +
+               "- Droit des affaires (entreprise, société, litige commercial, contrat commercial, faillite)\n" +
+               "- Droit de la famille (mariage, succession, héritage, adoption, filiation)\n" +
+               "- Droit administratif (administration, permis, urbanisme, fonction publique)\n" +
+               "- Civil (autres litiges civils)\n" +
+               "- Autre (si aucune catégorie ne correspond)\n\n" +
+
+               "=== RÈGLES STRICTES ===\n" +
+               "1. EXTRACTION INTELLIGENTE : dès le premier message, extrait TOUT ce que le client a mentionné.\n" +
+               "   Ex : 'je veux un RDV lundi à 11h pour mon divorce'\n" +
+               "   → type_affaire=Divorce, date_preferee=lundi prochain en dd/MM/yyyy, heure_preferee=11:00, description=Consultation divorce\n\n" +
+               "2. NE REDEMANDE JAMAIS une information déjà donnée dans la conversation.\n\n" +
+               "3. Si des infos manquent, pose UNE seule question pour obtenir les infos manquantes.\n\n" +
+               "4. Quand tu as les 4 champs (type_affaire + description + date_preferee + heure_preferee) :\n" +
+               "   → mets ready_to_confirm=true et propose un récapitulatif clair.\n\n" +
+               "5. Propose MAXIMUM 4 créneaux dans 'suggestions' quand le client n'a pas précisé de date.\n" +
+               "   Format exact des créneaux : 'Lundi 14/04 à 09:00' (pour que le frontend les affiche comme boutons).\n\n" +
+               "6. Calculs de dates :\n" +
+               "   'demain' = " + LocalDate.now().plusDays(1).format(DATE_FMT) + "\n" +
+               "   'après-demain' = " + LocalDate.now().plusDays(2).format(DATE_FMT) + "\n" +
+               "   'lundi' = prochain lundi après aujourd'hui (calcule à partir de " + todayFormatted + ")\n\n" +
+               "7. Urgence : détecte 'urgent', 'urgence', 'pressé', 'rapidement', 'au plus vite', 'immédiatement' → urgence=true.\n\n" +
+               "8. appointment_confirmed doit TOUJOURS être false — c'est le backend qui gère la confirmation.\n\n" +
+               "9. " + salutationRule + "\n\n" +
+               "10. Dans 'message' : texte naturel en français UNIQUEMENT. Jamais de JSON, jamais d'accolades.\n\n" +
+
+               "=== EXEMPLES DE COMPRÉHENSION ===\n" +
+               "  'rdv lundi 11h divorce'         → Divorce, " + nextMondayStr() + " 11:00, desc=Consultation divorce\n" +
+               "  'problème propriétaire urgent'  → Droit immobilier, urgence=true, desc=Litige propriétaire\n" +
+               "  'licenciement abusif demain 14h' → Droit du travail, " + LocalDate.now().plusDays(1).format(DATE_FMT) + " 14:00\n" +
+               "  'consulter mon dossier'          → Regarder les dossiers en cours du client, demander lequel si plusieurs\n" +
+               "  'bonjour'                        → Saluer par le prénom et demander comment aider\n";
     }
 
     private String buildCasesList(Long userId) {
@@ -125,108 +172,93 @@ public class ChatContextEnricher {
 
     /**
      * Returns up to 4 pre-formatted slot suggestion strings from real DB data,
+     * checking against existing appointments so only truly free slots are shown.
      * e.g. ["Mardi 08/04 à 09:00", "Mercredi 09/04 à 14:00", ...]
      */
     public List<String> computeSlotSuggestions() {
-        List<String> suggestions = new java.util.ArrayList<>();
+        List<String> suggestions = new ArrayList<>();
         LocalDate today = LocalDate.now();
-        List<com.example.monpremiersite.entities.AvailableSlot> allSlots =
-                availableSlotRepository.findByActiveTrue();
 
-        if (!allSlots.isEmpty()) {
-            java.util.Map<java.time.DayOfWeek, List<com.example.monpremiersite.entities.AvailableSlot>> byDay =
-                    allSlots.stream()
-                            .filter(s -> s.getDayOfWeek() != null)
-                            .collect(Collectors.groupingBy(
-                                    com.example.monpremiersite.entities.AvailableSlot::getDayOfWeek));
+        Set<Long> avocatIds = getActiveAvocatIds();
+        if (avocatIds.isEmpty()) return fallbackSuggestions();
 
-            for (int i = 1; i <= 30 && suggestions.size() < 4; i++) {
-                LocalDate date = today.plusDays(i);
-                java.time.DayOfWeek dow = date.getDayOfWeek();
-                if (!byDay.containsKey(dow)) continue;
-
-                for (com.example.monpremiersite.entities.AvailableSlot slot : byDay.get(dow)) {
+        for (int i = 1; i <= 30 && suggestions.size() < 4; i++) {
+            LocalDate date = today.plusDays(i);
+            for (Long avocatId : avocatIds) {
+                if (suggestions.size() >= 4) break;
+                List<FreeSlotDTO> freeSlots = appointmentAgendaService.getAvailableSlots(avocatId, date);
+                for (FreeSlotDTO slot : freeSlots) {
                     if (suggestions.size() >= 4) break;
-                    if (slot.getStartTime() == null || slot.getEndTime() == null) continue;
-                    if (slot.getValidFrom() != null && date.isBefore(slot.getValidFrom())) continue;
-                    if (slot.getValidUntil() != null && date.isAfter(slot.getValidUntil())) continue;
-                    int duration = slot.getDefaultDuration() != null ? slot.getDefaultDuration() : 30;
-                    java.time.LocalTime current = slot.getStartTime();
-                    while (!current.plusMinutes(duration).isAfter(slot.getEndTime()) && suggestions.size() < 4) {
-                        suggestions.add(frenchDayName(dow) + " " + date.format(DateTimeFormatter.ofPattern("dd/MM")) + " à " + current.format(DateTimeFormatter.ofPattern("HH:mm")));
-                        current = current.plusMinutes(duration);
-                    }
+                    suggestions.add(frenchDayName(date.getDayOfWeek())
+                            + " " + date.format(SHORT_DATE_FMT)
+                            + " à " + slot.startTime.format(TIME_FMT));
                 }
             }
         }
 
-        // Fallback: next working days with standard hours
-        if (suggestions.isEmpty()) {
-            List<java.time.LocalTime> stdTimes = List.of(
-                    java.time.LocalTime.of(9, 0),
-                    java.time.LocalTime.of(10, 0),
-                    java.time.LocalTime.of(14, 0),
-                    java.time.LocalTime.of(15, 0));
-            int added = 0;
-            for (int i = 1; added < 4; i++) {
-                LocalDate date = today.plusDays(i);
-                if (date.getDayOfWeek() == java.time.DayOfWeek.SATURDAY ||
-                    date.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) continue;
-                java.time.LocalTime t = stdTimes.get(added % stdTimes.size());
-                suggestions.add(frenchDayName(date.getDayOfWeek()) + " " + date.format(DateTimeFormatter.ofPattern("dd/MM")) + " à " + t.format(DateTimeFormatter.ofPattern("HH:mm")));
-                added++;
-            }
-        }
-
-        return suggestions;
+        return suggestions.isEmpty() ? fallbackSuggestions() : suggestions;
     }
 
     private String buildAvailableSlotsList() {
         LocalDate today = LocalDate.now();
         StringBuilder sb = new StringBuilder();
 
-        List<com.example.monpremiersite.entities.AvailableSlot> allSlots =
-                availableSlotRepository.findByActiveTrue();
+        Set<Long> avocatIds = getActiveAvocatIds();
+        if (avocatIds.isEmpty()) return fallbackSlotsList();
 
         boolean hasRealSlots = false;
-
-        if (!allSlots.isEmpty()) {
-            java.util.Map<java.time.DayOfWeek, List<com.example.monpremiersite.entities.AvailableSlot>> byDay =
-                    allSlots.stream()
-                            .filter(s -> s.getDayOfWeek() != null)
-                            .collect(Collectors.groupingBy(
-                                    com.example.monpremiersite.entities.AvailableSlot::getDayOfWeek));
-
-            for (int i = 1; i <= 14; i++) {
-                LocalDate date = today.plusDays(i);
-                java.time.DayOfWeek dow = date.getDayOfWeek();
-                if (!byDay.containsKey(dow)) continue;
-
-                List<String> times = new java.util.ArrayList<>();
-                for (com.example.monpremiersite.entities.AvailableSlot slot : byDay.get(dow)) {
-                    if (slot.getStartTime() == null || slot.getEndTime() == null) continue;
-                    if (slot.getValidFrom() != null && date.isBefore(slot.getValidFrom())) continue;
-                    if (slot.getValidUntil() != null && date.isAfter(slot.getValidUntil())) continue;
-                    int duration = slot.getDefaultDuration() != null ? slot.getDefaultDuration() : 30;
-                    java.time.LocalTime current = slot.getStartTime();
-                    while (!current.plusMinutes(duration).isAfter(slot.getEndTime())) {
-                        times.add(current.format(DateTimeFormatter.ofPattern("HH:mm")));
-                        current = current.plusMinutes(duration);
-                    }
+        for (int i = 1; i <= 14; i++) {
+            LocalDate date = today.plusDays(i);
+            // Collect all free times for this day across all avocats (deduplicated)
+            TreeSet<String> times = new TreeSet<>();
+            for (Long avocatId : avocatIds) {
+                for (FreeSlotDTO slot : appointmentAgendaService.getAvailableSlots(avocatId, date)) {
+                    times.add(slot.startTime.format(TIME_FMT));
                 }
-                if (!times.isEmpty()) {
-                    hasRealSlots = true;
-                    sb.append("- ").append(date.format(DATE_FMT))
-                      .append(" (").append(frenchDayName(dow)).append(") : ")
-                      .append(String.join(", ", times)).append("\n");
-                }
+            }
+            if (!times.isEmpty()) {
+                hasRealSlots = true;
+                sb.append("- ").append(date.format(DATE_FMT))
+                  .append(" (").append(frenchDayName(date.getDayOfWeek())).append(") : ")
+                  .append(String.join(", ", times)).append("\n");
             }
         }
 
-        if (hasRealSlots) return sb.toString().trim();
+        return hasRealSlots ? sb.toString().trim() : fallbackSlotsList();
+    }
 
-        // Fallback: next 5 working days with standard hours
-        sb = new StringBuilder();
+    /** IDs of avocats who have at least one active slot template. */
+    private Set<Long> getActiveAvocatIds() {
+        return availableSlotRepository.findByActiveTrue().stream()
+                .filter(s -> s.getAvocat() != null)
+                .map(s -> s.getAvocat().getIdu())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private List<String> fallbackSuggestions() {
+        List<String> suggestions = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        List<java.time.LocalTime> stdTimes = List.of(
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(10, 0),
+                java.time.LocalTime.of(14, 0),
+                java.time.LocalTime.of(15, 0));
+        int added = 0;
+        for (int i = 1; added < 4; i++) {
+            LocalDate date = today.plusDays(i);
+            if (date.getDayOfWeek() == java.time.DayOfWeek.SATURDAY ||
+                date.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) continue;
+            suggestions.add(frenchDayName(date.getDayOfWeek())
+                    + " " + date.format(SHORT_DATE_FMT)
+                    + " à " + stdTimes.get(added % stdTimes.size()).format(TIME_FMT));
+            added++;
+        }
+        return suggestions;
+    }
+
+    private String fallbackSlotsList() {
+        StringBuilder sb = new StringBuilder();
+        LocalDate today = LocalDate.now();
         int added = 0;
         for (int i = 1; added < 5; i++) {
             LocalDate date = today.plusDays(i);
@@ -250,5 +282,12 @@ public class ChatContextEnricher {
             case SATURDAY -> "Samedi";
             case SUNDAY -> "Dimanche";
         };
+    }
+
+    /** Retourne la date du prochain lundi en dd/MM/yyyy — utilisé dans le system prompt. */
+    private String nextMondayStr() {
+        LocalDate d = LocalDate.now().plusDays(1);
+        while (d.getDayOfWeek() != java.time.DayOfWeek.MONDAY) d = d.plusDays(1);
+        return d.format(DATE_FMT);
     }
 }

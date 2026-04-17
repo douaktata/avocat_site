@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getCase, getDocumentsByCase, patchCaseStatus, patchCasePriority, uploadDocument, downloadDocument, deleteDocument, getTribunals, patchCaseTribunalInfo, getAudiencesByCase, createAudience, deleteAudience, patchAudienceStatus, getCaseClosePreview, closeCase } from '../api';
+import { getCase, getDocumentsByCase, patchCaseStatus, patchCasePriority, uploadDocument, downloadDocument, deleteDocument, getTribunals, patchCaseTribunalInfo, getAudiencesByCase, createAudience, deleteAudience, patchAudienceStatus, getCaseClosePreview, closeCase, summarizeDocument } from '../api';
 import InvoiceGenerator from './InvoiceGenerator';
 import FacturesTab from './FacturesTab';
 import TrustTab from './TrustTab';
@@ -75,6 +75,9 @@ const AffaireDetailav = () => {
   const [avocatId]                            = useState(() => {
     try { return JSON.parse(localStorage.getItem('user'))?.idu; } catch { return null; }
   });
+
+  // ── IA : Résumé de document ─────────────────────────────────────────────
+  const [aiSummaryModal, setAiSummaryModal] = useState(null); // null | { docName, summary, loading }
 
   const loadDocuments  = () => getDocumentsByCase(id).then(r => setDocuments(r.data.map(d => ({ id: d.idd, nom: d.file_name || '-', type: d.file_type || '-', date: d.uploaded_at ? d.uploaded_at.split('T')[0] : null, uploadedBy: d.uploaded_by_name || '-' })))).catch(console.error);
   const loadAudiences  = () => getAudiencesByCase(id).then(r => setAudiences(r.data)).catch(console.error);
@@ -495,6 +498,17 @@ const AffaireDetailav = () => {
                       title="Télécharger">
                       <i className="fas fa-download"></i>
                     </button>
+                    <button
+                      onClick={() => {
+                        setAiSummaryModal({ docName: doc.nom, summary: null, loading: true });
+                        summarizeDocument(doc.id)
+                          .then(res => setAiSummaryModal({ docName: res.data.documentName || doc.nom, summary: res.data.summary, loading: false }))
+                          .catch(() => setAiSummaryModal({ docName: doc.nom, summary: 'Erreur : Ollama est-il démarré ? (ollama run mistral)', loading: false }));
+                      }}
+                      style={{ background: 'linear-gradient(135deg, #1a3a6c, #2451a3)', color: '#fff', border: 'none', borderRadius: 6, padding: '0.3rem 0.65rem', cursor: 'pointer', marginLeft: '0.25rem', fontWeight: 600, fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                      title="Résumer avec l'IA (Mistral)">
+                      <i className="fas fa-magic"></i> IA
+                    </button>
                     <button onClick={() => handleDeleteDoc(doc.id)}
                       style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, padding: '0.3rem 0.6rem', cursor: 'pointer', marginLeft: '0.25rem' }}
                       title="Supprimer">
@@ -901,6 +915,83 @@ const AffaireDetailav = () => {
           onClose={() => setShowGenerator(false)}
           onCreated={() => setShowGenerator(false)}
         />
+      )}
+
+      {/* ── Modal Résumé IA ── */}
+      {aiSummaryModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(26,58,108,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
+          onClick={e => e.target === e.currentTarget && !aiSummaryModal.loading && setAiSummaryModal(null)}>
+          <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 640, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(26,58,108,0.25)', overflow: 'hidden' }}>
+
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg, #1a3a6c, #2451a3, #3d6cb8)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <i className="fas fa-magic" style={{ color: '#fff', fontSize: '1rem' }}></i>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Résumé IA — Mistral (Ollama local)</div>
+                <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{aiSummaryModal.docName}</div>
+              </div>
+              {!aiSummaryModal.loading && (
+                <button onClick={() => setAiSummaryModal(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', color: '#fff', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </div>
+
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+              {aiSummaryModal.loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem', gap: '1.25rem' }}>
+                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, #1a3a6c22, #2451a322)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'dd-spin 2s linear infinite' }}>
+                    <i className="fas fa-brain" style={{ color: '#1a3a6c', fontSize: '1.4rem' }}></i>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '1rem', marginBottom: '0.4rem' }}>Analyse en cours…</div>
+                    <div style={{ color: '#64748b', fontSize: '0.85rem' }}>Mistral lit et resume le document juridique.<br/>Cela peut prendre 30 a 60 secondes.</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    {[0,1,2].map(i => (
+                      <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#2451a3', opacity: 0.4, animation: `dd-bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}></div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '2px solid #f1f5f9' }}>
+                    <i className="fas fa-file-alt" style={{ color: '#1a3a6c', fontSize: '0.9rem' }}></i>
+                    <span style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.9rem' }}>Resume du document</span>
+                    <span style={{ marginLeft: 'auto', background: '#e8eef8', color: '#1a3a6c', fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 999 }}>Genere par Mistral</span>
+                  </div>
+                  <div style={{ color: '#334155', fontSize: '0.9rem', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
+                    {aiSummaryModal.summary}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            {!aiSummaryModal.loading && (
+              <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', background: '#fafafe' }}>
+                <button
+                  onClick={() => {
+                    if (aiSummaryModal.summary) {
+                      navigator.clipboard.writeText(aiSummaryModal.summary);
+                    }
+                  }}
+                  style={{ padding: '0.5rem 1.1rem', background: '#e8eef8', color: '#1a3a6c', border: '1px solid #1a3a6c', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <i className="fas fa-copy"></i> Copier
+                </button>
+                <button
+                  onClick={() => setAiSummaryModal(null)}
+                  style={{ padding: '0.5rem 1.4rem', background: '#1a3a6c', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
+                  Fermer
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── Modal clôture dossier ── */}

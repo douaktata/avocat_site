@@ -73,6 +73,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/api/contract-templates/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/", "/index.html", "/static/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
@@ -113,6 +114,8 @@ public class SecurityConfig {
                 .requestMatchers("/presence-journals/**").hasAnyAuthority("ADMINISTRATEUR", "SECRETAIRE", "AVOCAT")
                 .requestMatchers("/messages/**").hasAnyAuthority("ADMINISTRATEUR", "SECRETAIRE", "AVOCAT", "CLIENT", "STAGIAIRE")
                 .requestMatchers("/api/chat/**").hasAnyAuthority("ADMINISTRATEUR", "SECRETAIRE", "AVOCAT", "CLIENT", "STAGIAIRE")
+                .requestMatchers("/api/contract-templates/**").hasAnyAuthority("ADMINISTRATEUR", "SECRETAIRE", "AVOCAT", "STAGIAIRE")
+                .requestMatchers("/api/contracts/**").hasAnyAuthority("ADMINISTRATEUR", "SECRETAIRE", "AVOCAT", "STAGIAIRE")
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

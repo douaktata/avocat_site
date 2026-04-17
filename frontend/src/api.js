@@ -186,6 +186,8 @@ export const uploadDocument = (formData) => API.post('/documents/upload', formDa
 export const downloadDocument = (id) => API.get(`/documents/${id}/download`, { responseType: 'blob' });
 export const updateDocument = (id, data) => API.put(`/documents/${id}`, data);
 export const deleteDocument = (id) => API.delete(`/documents/${id}`);
+// IA : Résumé d'un document via Ollama Mistral local (peut prendre 30–120 secondes ou plus si très long)
+export const summarizeDocument = (id) => API.get(`/documents/${id}/summarize`, { timeout: 300000 });
 
 // Messages
 export const getMessages = () => API.get('/messages');
